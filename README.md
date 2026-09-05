@@ -21,12 +21,14 @@ will be linked here in Session 4.
 | 2 | Validate | raw frame to a validated frame, or a stop with the violation listed | `validate.py` |
 | 3 | Split | validated frame to train, val, holdout and a future batch, keyed by customerID | `split.py` |
 | 4 | Features | frame to matrix, feature-code hash and column list logged | `features.py` |
-| 5 | Train | one LogisticRegression pipeline (the sweep lands in Session 2) | `train.py` |
+| 5 | Train | 14 explicit configs, two families, one child run each | `train.py` |
 | 6 | Evaluate | ROC-AUC, PR-AUC, recall at precision 0.5, Brier, calibration plot | `evaluate.py` |
-| 7 | Register | model version in the registry, `champion` alias moved | `register.py` |
+| 7 | Register | winner registered, `champion` alias moved, outgoing one kept as `previous` | `register.py` |
 | 8 | Serve | JSON to prediction, model version and run id | `serve.py` |
 
-Steps 9 to 11, monitoring, the retrain trigger and the eval gate, are not built yet. See Status.
+| 11 | Gate | champion vs `configs/thresholds.yaml` on the holdout, non-zero exit | `gate.py` |
+
+Steps 9 and 10, drift monitoring and the retrain trigger, are not built yet. See Status.
 
 ## Quickstart
 
@@ -35,8 +37,10 @@ py -3.12 -m venv .venv
 .venv\Scripts\activate            # Linux and macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-python -m mlops_loop skeleton     # steps 1 to 8 once, everything logged
-python -m mlops_loop ui           # MLflow UI on :5000, read the run
+python -m mlops_loop skeleton     # steps 1 to 8 once, one model, everything logged
+python -m mlops_loop train        # the sweep: 14 configs, select, register, promote
+python -m mlops_loop eval         # the gate: exits 1 if the champion is below threshold
+python -m mlops_loop ui           # MLflow UI on :5000, read the runs
 python -m mlops_loop serve        # FastAPI on :8000
 pytest -q                         # offline, no network, on the committed 500-row fixture
 ```
@@ -52,46 +56,68 @@ quietly doing nothing.
 ## What one run logs
 
 Params: `dataset_source`, `dataset_sha256`, `feature_code_hash`, `n_encoded_features`, `split_seed`,
-`holdout_fraction`, `val_fraction`, `future_rule`, `model_class` and one `model_*` per
-hyperparameter.
+`holdout_fraction`, `val_fraction`, `future_rule`, `model_class`, `model_family` and one `model_*`
+per hyperparameter.
 
 Metrics: `raw_rows`, `total_charges_blank_count`, `rows_*` and `churn_rate_*` per split,
-`val_*`, `holdout_*` and `future_*` for the four evaluation metrics, and `seconds_*` per
-step.
+`val_*`, `holdout_*` and `future_*` for the four evaluation metrics, and `seconds_*` per step.
 
 Tags: `git_commit`, `git_dirty`, `phase`, `model_name`, `model_version`, `model_alias`, and
-`step_<name>` for each of the eight steps, so a failure names the step that stopped.
+`step_<name>` for each step, so a failure names the step that stopped.
 
-Artifacts: `calibration_holdout.png`, `split_ids.json`, `feature_columns.json`, `serve_check.json`,
-the two configs, the registered model, and the dataset input.
+Artifacts: `calibration_val.png` and `calibration_holdout.png`, `split_ids.json`,
+`feature_columns.json`, `serve_check.json`, `promotion.json`, `gate.json`, the configs, the
+registered model, and the dataset input.
 
-## The skeleton run
+A sweep is one parent run holding the data steps and the outcome, with one child run per config
+holding that config's params, its validation metrics and its calibration curve. Only the winner's
+model is stored, logged into the child run that trained it, so the registry version points at the
+run that produced it.
 
-Run `ae4f0cd88d4b4d439bbcadb545bd01b6`, experiment `churn`, commit `605ab74`, `git_dirty=false`.
-Dataset sha256 `16320c9c1ec72448db59aa0a26a0b95401046bef5d02fd3aeb906448e3055e91` over 7,043 rows,
-of which 11 had a blank `TotalCharges` and were set to 0.0 after the tenure-0 check. Feature-code
-hash `215d7d44d683a290ba5e4a3561fd2f5aa75b4b960203a84643ad6542a4205b49`, 45 encoded columns.
-One LogisticRegression, `C=1.0`, `solver=lbfgs`, `max_iter=1000`, registered as `churn` version 1
-with the `champion` alias.
+## The sweep and the gate
 
-| split | rows | churn rate | ROC-AUC | PR-AUC | recall at precision 0.5 | Brier |
-|-------|-----:|-----------:|--------:|-------:|------------------------:|------:|
-| train | 2,680 | 0.1466 | fitted on | | | |
-| val | 671 | 0.1475 | 0.8448 | 0.5072 | 0.5657 | 0.0949 |
-| holdout | 1,057 | 0.2649 | 0.8186 | 0.5971 | 0.7536 | 0.1493 |
-| future | 2,635 | 0.4163 | 0.7721 | 0.6618 | 0.9572 | 0.2067 |
+Sweep parent run `4afa568e01354c78acc720694a94a99c`, commit `be86fd5`, 14 configs in 25.7 seconds.
+Selection is validation PR-AUC. The full table with every child run id is in
+[reports/sweep_comparison.md](reports/sweep_comparison.md).
 
-Read the val and holdout columns together. Val comes from the same reference pool the model was fit
-on, so its churn rate is 0.1475 and its Brier is low because most predictions are confidently near
-zero. The holdout is drawn from the whole population, churns at 0.2649, and is the number to quote.
+| rank | config | family | val PR-AUC | val ROC-AUC | val Brier |
+|-----:|--------|--------|-----------:|------------:|----------:|
+| 1 | `lr-c0.05-balanced` (champion) | logistic_regression | 0.5851 | 0.8094 | 0.1868 |
+| 2 | `lr-c0.05` | logistic_regression | 0.5731 | 0.7976 | 0.1604 |
+| 3 | `lr-c0.5` | logistic_regression | 0.5667 | 0.8088 | 0.1595 |
+| 5 | `lr-c1.0` (the incumbent) | logistic_regression | 0.5423 | 0.8004 | 0.1655 |
+| 8 | `hgb-lr0.10-leaf15-l2` (best tree) | hist_gradient_boosting | 0.4623 | 0.7226 | 0.1998 |
+| 14 | `lr-c5.0-balanced` | logistic_regression | 0.3999 | 0.6932 | 0.2020 |
 
-The future batch is the reason the rest of this repo exists. The model has never seen a fibre-optic
-customer, and on that batch its Brier score is 0.2067 against 0.1493 on the holdout: the ranking
-still works, ROC-AUC 0.7721, but the probabilities are badly calibrated. Session 3 has to catch that
-without being told the answer.
+Every linear model but one beat every tree. The training set contains no fibre-optic customer
+while 43.6 % of the holdout is one, and a tree cannot split on a one-hot column that is constant
+zero, so it scores those customers as ordinary. The linear model extrapolates its coefficient and
+at least moves them in the right direction.
 
-To reproduce these numbers: `python -m mlops_loop skeleton` at commit `605ab74`, then
-`python -m mlops_loop ui` and open the run. The split is seeded, so the rows land the same way.
+The winner became `churn` version 2 and took the `champion` alias; version 1 kept its version and
+took `previous`. The holdout was looked at exactly once, by the winner, after selection was over.
+
+`python -m mlops_loop eval` on that champion, gate run `de2de7f753cc45ea87d42752d2b32d9c`:
+
+| metric | value | threshold | margin | result |
+|--------|------:|-----------|-------:|--------|
+| `holdout_roc_auc` | 0.8014 | >= 0.7699 | +0.0315 | pass |
+| `holdout_pr_auc` | 0.5944 | >= 0.5164 | +0.0780 | pass |
+| `holdout_recall_at_precision_50` | 0.6893 | >= 0.5964 | +0.0929 | pass |
+| `holdout_brier` | 0.1962 | <= 0.1981 | +0.0019 | pass |
+
+Read the last line. Selecting on PR-AUC rewards ranking and is indifferent to whether the
+probabilities mean anything, so it picked the reweighted model, which ranks slightly better and is
+calibrated noticeably worse than the `lr-c0.05` directly below it. The gate caught it by two
+thousandths. That is an argument for putting calibration into the selection rule, not just the
+gate.
+
+The thresholds are in [configs/thresholds.yaml](configs/thresholds.yaml), one comment per line
+saying which run it came from. They are a regression gate against the incumbent, and the tolerance
+rule was committed before the sweep existed.
+
+To reproduce: `python -m mlops_loop train` then `python -m mlops_loop eval` at commit `be86fd5`.
+Everything is seeded, so the rows and the numbers land the same way.
 
 ## Serving
 
@@ -107,13 +133,24 @@ target. An unknown category returns 422 with the violation named, it does not re
 
 ## Design notes worth knowing
 
-The holdout is drawn first, stratified on churn over the whole population, and is scored but never
-trained on. `train.fit_model` asserts the holdout customerIDs are absent from the data it is about
-to fit, so that rule is enforced rather than assumed.
+The split order is holdout, then val, then the future batch, then train. The holdout is drawn
+first, stratified on churn over the whole population, and is scored but never trained on.
+`train.fit_model` asserts the holdout customerIDs are absent from the data it is about to fit, so
+that rule is enforced rather than assumed.
 
-The future batch is a real slice, not injected noise: fibre-optic customers, carved out at split
-time, who churn at 41.6 % against 14.7 % for the reference set. The champion never sees one during
-training. Session 3 uses it for drift detection and the challenger comparison.
+Val is drawn next, from the same population, because a validation split has to look like the data
+the model will serve or it cannot rank candidates by anything that matters. Session 1 drew it from
+the reference pool instead, which contains no fibre-optic customer, and Session 2's sweep selected
+a model whose holdout ROC-AUC was 0.63. Val now matches the holdout on churn rate, 0.2654 against
+0.2649, and on fibre share, 0.435 against 0.436.
+
+Selection touches val only. The holdout is handed out by `split.HoldoutBudget`, which allows one
+look per sweep, records why, and raises on the second. Scoring every candidate on the holdout and
+keeping the best would report the maximum of 14 samples rather than an estimate.
+
+The future batch is a real slice, not injected noise: 2,114 fibre-optic customers carved out at
+split time, who churn at 40.9 % against 15.2 % for the training set. The champion never sees one
+during training. Session 3 uses it for drift detection and the challenger comparison.
 
 One-hot categories are pinned to the sets the schema validates against, not learned from the fit
 data. That is what makes the comparison in Session 3 possible: a model trained without a single
@@ -124,17 +161,18 @@ Decisions and their reasons are in [docs/decisions.md](docs/decisions.md).
 
 ## Status
 
-Built (Session 1): steps 1 to 8, the CLI, the FastAPI endpoint, the registry with a `champion`
-alias, the test suite and CI.
+Built (Sessions 1 and 2): steps 1 to 8 and step 11. The CLI, the FastAPI endpoint, the tracked
+sweep, the registry with `champion` and `previous` aliases, the eval gate, the test suite, and CI
+that rebuilds the registry and runs the gate on every push and weekly.
 
 Not built yet:
 
-- `train`: the tracked sweep over `configs/sweep.yaml` (Session 2)
-- `eval`: the gate against `configs/thresholds.yaml`, exiting non-zero below threshold (Session 2)
-- Promotion on merit: Session 1 promotes its single model unconditionally (Session 2)
-- `drift`: PSI on the future batch, the retrain trigger, champion versus challenger (Session 3)
+- Promotion on merit: the sweep winner takes `champion` without a head-to-head test against the
+  current champion on the fixed holdout (Session 3)
+- `drift`: PSI per feature and on the prediction distribution, over the future batch (Session 3)
+- The retrain trigger and the champion-versus-challenger comparison (Session 3)
 - `reproduce`: the whole loop from a clean clone (Session 3)
-- `reports/`: the sweep table, drift tables and error analysis (Session 3)
+- `reports/error_analysis.md` (Session 3)
 - `docs/preflight.md` (Session 3)
 - Track B, the GenAI evaluation suite in order-processing-workflow (Session 4)
 
