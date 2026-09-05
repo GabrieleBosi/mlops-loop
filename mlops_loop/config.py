@@ -71,9 +71,20 @@ def drift_config(path: Path | str | None = None) -> dict[str, Any]:
     """Load configs/drift.yaml. Session 1 only reads the future_batch rule."""
     p = Path(path) if path is not None else repo_root() / "configs" / "drift.yaml"
     cfg = load_yaml(p)
-    rule = cfg.get("future_batch")
-    if not isinstance(rule, dict) or "column" not in rule or "equals" not in rule:
-        raise ValueError(f"{p}: future_batch must set 'column' and 'equals'")
+    batches = cfg.get("future_batches")
+    if not isinstance(batches, list) or not batches:
+        raise ValueError(f"{p}: future_batches must be a non-empty list")
+    for entry in batches:
+        if not isinstance(entry, dict) or not entry.get("name") or not entry.get("rules"):
+            raise ValueError(f"{p}: every future batch needs a name and rules: {entry}")
+    psi = cfg.get("psi")
+    if not isinstance(psi, dict) or not isinstance(psi.get("thresholds"), dict):
+        raise ValueError(f"{p}: psi.thresholds must be a mapping of feature to threshold")
+    if not isinstance(psi.get("prediction_threshold"), (int, float)):
+        raise ValueError(f"{p}: psi.prediction_threshold must be a number")
+    promotion = cfg.get("promotion")
+    if not isinstance(promotion, dict) or not isinstance(promotion.get("margin"), (int, float)):
+        raise ValueError(f"{p}: promotion.margin must be a number")
     return cfg
 
 

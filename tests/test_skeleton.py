@@ -69,7 +69,7 @@ def test_splits_do_not_overlap_in_the_logged_ids(skeleton_run) -> None:
     ids = mlflow.artifacts.load_dict(
         f"{MlflowClient().get_run(skeleton_run.run_id).info.artifact_uri}/split_ids.json"
     )
-    assert set(ids) == {"train", "val", "holdout", "future"}
+    assert set(ids) == {"train", "val", "holdout", "batch:fibre-monthly", "batch:fibre-committed"}
     seen: set[str] = set()
     for name, values in ids.items():
         assert not seen & set(values), f"{name} overlaps an earlier split"

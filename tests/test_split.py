@@ -5,16 +5,30 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from mlops_loop import config
 from mlops_loop.split import Splits, SplitError, assert_holdout_unseen, split
 
 RULE = {"column": "InternetService", "equals": "Fiber optic"}
+BATCHES = config.drift_config()["future_batches"]
 
 
 def _split(frame: pd.DataFrame, seed: int = 42) -> Splits:
-    return split(frame, holdout_fraction=0.15, val_fraction=0.20, seed=seed, future_rule=RULE)
+    return split(frame, holdout_fraction=0.15, val_fraction=0.20, seed=seed,
+                 future_batches=BATCHES)
 
 
 def test_splits_are_disjoint_and_cover_the_input(splits: Splits, validated) -> None:
+    parts = splits.parts()
+    id_sets = {name: set(part.customerID) for name, part in parts.items()}
+    names = list(parts)
+    for i, left in enumerate(names):
+        for right in names[i + 1 :]:
+            assert not id_sets[left] & id_sets[right], f"{left} overlaps {right}"
+    assert set().union(*id_sets.values()) == set(validated.frame.customerID)
+    assert sum(len(part) for part in parts.values()) == len(validated.frame)
+
+
+def test_the_canonical_four_splits_still_partition_the_input(splits: Splits, validated) -> None:
     names = list(splits.as_dict())
     for i, left in enumerate(names):
         for right in names[i + 1 :]:
@@ -29,6 +43,38 @@ def test_future_batch_is_all_fibre_and_train_has_none(splits: Splits) -> None:
     """Train still never meets the future batch, which is what Session 3 depends on."""
     assert (splits.future.InternetService == "Fiber optic").all()
     assert not (splits.train.InternetService == "Fiber optic").any()
+
+
+def test_named_batches_match_their_rules_and_do_not_overlap(splits: Splits) -> None:
+    monthly = splits.batch("fibre-monthly")
+    committed = splits.batch("fibre-committed")
+    assert (monthly.InternetService == "Fiber optic").all()
+    assert (monthly.Contract == "Month-to-month").all()
+    assert (committed.InternetService == "Fiber optic").all()
+    assert committed.Contract.isin(["One year", "Two year"]).all()
+    assert not set(monthly.customerID) & set(committed.customerID)
+    assert len(monthly) + len(committed) == len(splits.future)
+
+
+def test_a_row_goes_to_the_first_batch_that_claims_it(validated) -> None:
+    """Overlapping rules must not double-count a customer."""
+    overlapping = [
+        {"name": "first", "rules": [{"column": "InternetService", "equals": "Fiber optic"}]},
+        {"name": "second", "rules": [{"column": "Contract", "equals": "Month-to-month"}]},
+    ]
+    result = split(validated.frame, 0.15, 0.20, 42, overlapping)
+    assert not set(result.batch("first").customerID) & set(result.batch("second").customerID)
+    assert (result.batch("second").InternetService != "Fiber optic").all()
+
+
+def test_unknown_batch_name_stops(splits: Splits) -> None:
+    with pytest.raises(SplitError, match="unknown future batch"):
+        splits.batch("nope")
+
+
+def test_a_batch_without_rules_stops(validated) -> None:
+    with pytest.raises(SplitError, match="has no rules"):
+        split(validated.frame, 0.15, 0.20, 42, [{"name": "empty", "rules": []}])
 
 
 def test_val_mirrors_the_holdout_population(splits: Splits) -> None:
@@ -80,5 +126,5 @@ def test_unknown_future_column_stops(validated) -> None:
             holdout_fraction=0.15,
             val_fraction=0.20,
             seed=42,
-            future_rule={"column": "Nope", "equals": "x"},
+            future_batches={"column": "Nope", "equals": "x"},
         )

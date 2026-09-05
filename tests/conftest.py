@@ -32,6 +32,8 @@ def validated(sample_raw: pd.DataFrame):
 
 @pytest.fixture()
 def splits(validated):
+    """The real two-batch layout from configs/drift.yaml, on the committed fixture."""
+    from mlops_loop import config
     from mlops_loop.split import split
 
     return split(
@@ -39,7 +41,7 @@ def splits(validated):
         holdout_fraction=0.15,
         val_fraction=0.20,
         seed=42,
-        future_rule={"column": "InternetService", "equals": "Fiber optic"},
+        future_batches=config.drift_config()["future_batches"],
     )
 
 

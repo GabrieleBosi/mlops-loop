@@ -1,9 +1,83 @@
-# The future batch is carved out at split time and never used for training in Session 1.
-# The shift is real and explainable, not injected noise: fibre-optic customers churn at
-# 41.9 % against 14.5 % for everyone else (measured on the full file, 2026-09-05).
-future_batch:
-  column: InternetService
-  equals: Fiber optic
+# Drift monitoring, the retraining trigger and the promotion rule.
+#
+# The future batches are real slices of the data, defined by feature values, never injected
+# noise. Both are carved out of the population at split time and no model is ever fitted on
+# them until a drift trigger says so. Together they are exactly the fibre-optic pool Session 1
+# defined, so splitting it in two left train, val and holdout untouched.
 
-# Session 3 adds here: per-feature PSI thresholds, the prediction-distribution PSI threshold,
-# and the margin a challenger must beat the champion by on the fixed holdout to be promoted.
+# PSI compares each batch against the split the champion was fitted on.
+reference_split: train
+
+future_batches:
+  # 1,451 rows, churn 0.541 against train's 0.152, MonthlyCharges mean 87.29 against 44.26,
+  # tenure mean 21.6 against 31.8. Expensive customers on no commitment who leave often. This
+  # is the batch that should look alarming.
+  - name: fibre-monthly
+    description: Fibre-optic customers on a month-to-month contract
+    rules:
+      - {column: InternetService, equals: Fiber optic}
+      - {column: Contract, equals: Month-to-month}
+
+  # 663 rows, churn 0.121, slightly BELOW train's 0.152, but MonthlyCharges mean 100.4 and
+  # tenure mean 55.9. The features have moved as far as the first batch, in the same
+  # direction, and the label has moved the other way. A monitor that only watches inputs
+  # cannot tell these two apart, which is the point of running both.
+  - name: fibre-committed
+    description: Fibre-optic customers on a one or two year contract
+    rules:
+      - {column: InternetService, equals: Fiber optic}
+      - {column: Contract, in: [One year, Two year]}
+
+psi:
+  # Ten bins, quantiles of the reference for numeric columns, one bin per category otherwise.
+  bins: 10
+  # A bin empty in the reference but populated in the batch would make PSI infinite. Empty
+  # proportions become this instead, so a brand new category contributes a large finite number
+  # rather than an inf that cannot be logged or compared.
+  epsilon: 0.000001
+
+  # The conventional reading of PSI, from credit scoring: below 0.10 no meaningful shift,
+  # 0.10 to 0.25 moderate, above 0.25 major. The trigger is set at the major line for every
+  # feature. A moderate shift is recorded in the report and does not retrain.
+  #
+  # Every feature is listed rather than defaulted, because "which features are we watching"
+  # is exactly the question a reader of this file has, and an unlisted feature is a feature
+  # nobody decided about. mlops_loop/monitor.py stops if this list and features.FEATURE_COLUMNS
+  # disagree.
+  thresholds:
+    SeniorCitizen: 0.25
+    tenure: 0.25
+    MonthlyCharges: 0.25
+    TotalCharges: 0.25
+    gender: 0.25
+    Partner: 0.25
+    Dependents: 0.25
+    PhoneService: 0.25
+    MultipleLines: 0.25
+    InternetService: 0.25
+    OnlineSecurity: 0.25
+    OnlineBackup: 0.25
+    DeviceProtection: 0.25
+    TechSupport: 0.25
+    StreamingTV: 0.25
+    StreamingMovies: 0.25
+    Contract: 0.25
+    PaperlessBilling: 0.25
+    PaymentMethod: 0.25
+
+  # The champion's predicted-probability distribution on the batch against its distribution on
+  # the reference. Tighter than the per-feature line, at the moderate boundary rather than the
+  # major one, because this is the aggregate the model actually emits: individual features can
+  # move without the output moving, and if the output has moved the model is already being
+  # asked a different question.
+  prediction_threshold: 0.10
+
+promotion:
+  # A challenger replaces the champion only if it beats it by more than this on PR-AUC, on the
+  # fixed holdout, both scored in the same run. 0.01 is roughly twice the gap between adjacent
+  # configs in the Session 2 sweep (0.5851, 0.5731, 0.5667 at the top), so a challenger has to
+  # do better than the noise between two neighbouring hyperparameter settings. Anything
+  # smaller and the champion would churn on measurement error.
+  margin: 0.01
+  metric: pr_auc
+  split: holdout

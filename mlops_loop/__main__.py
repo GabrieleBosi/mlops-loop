@@ -9,10 +9,7 @@ import sys
 
 from . import tracking
 
-NOT_BUILT = {
-    "drift": ("Session 3", "PSI on the future batch, retrain and challenge"),
-    "reproduce": ("Session 3", "skeleton, train, eval, drift and reports end to end"),
-}
+NOT_BUILT: dict[str, tuple[str, str]] = {}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,6 +38,26 @@ def build_parser() -> argparse.ArgumentParser:
     serve = subparsers.add_parser("serve", help="FastAPI on :8000 serving models:/churn@champion")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
+
+    drift = subparsers.add_parser(
+        "drift", help="PSI on each future batch, retrain and challenge where it drifted"
+    )
+    drift.add_argument("--config", default=None, help="path to skeleton.yaml")
+    drift.add_argument("--drift", dest="drift_config", default=None, help="path to drift.yaml")
+    drift.add_argument("--batch", action="append", default=None,
+                       help="only this batch; repeatable, defaults to every configured batch")
+    drift.add_argument("--source", default=None, help="override the dataset URL with a path")
+
+    reports = subparsers.add_parser(
+        "reports", help="error analysis on the champion, written to reports/"
+    )
+    reports.add_argument("--source", default=None, help="override the dataset URL with a path")
+
+    reproduce = subparsers.add_parser(
+        "reproduce", help="skeleton, train, eval, drift, reports and the gate again"
+    )
+    reproduce.add_argument("--config", default=None, help="path to skeleton.yaml")
+    reproduce.add_argument("--source", default=None, help="override the dataset URL with a path")
 
     ui = subparsers.add_parser("ui", help="mlflow ui on :5000 against the local store")
     ui.add_argument("--port", type=int, default=5000)
@@ -88,6 +105,41 @@ def main(argv: list[str] | None = None) -> int:
             print(f"eval gate could not run: {exc}", file=sys.stderr)
             return 1
         print(gate.format_result(result))
+        return 0 if result.passed else 1
+
+    if args.command == "drift":
+        from . import drift as drift_module
+        from . import monitor
+
+        try:
+            result = drift_module.run(
+                batches=args.batch,
+                config_path=args.config,
+                drift_path=args.drift_config,
+                source=args.source,
+            )
+        except monitor.MonitorError as exc:
+            print(f"drift could not run: {exc}", file=sys.stderr)
+            return 1
+        print(drift_module.format_result(result))
+        return 0
+
+    if args.command == "reports":
+        from . import analysis
+
+        try:
+            result = analysis.run(source=args.source)
+        except analysis.AnalysisError as exc:
+            print(f"reports could not run: {exc}", file=sys.stderr)
+            return 1
+        print(analysis.format_result(result))
+        return 0
+
+    if args.command == "reproduce":
+        from . import reproduce as reproduce_module
+
+        result = reproduce_module.run(config_path=args.config, source=args.source)
+        print(reproduce_module.format_result(result))
         return 0 if result.passed else 1
 
     if args.command == "serve":

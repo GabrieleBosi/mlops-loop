@@ -34,8 +34,8 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-  gate:
-    name: sweep and eval gate
+  loop:
+    name: reproduce and gate
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -53,18 +53,16 @@ jobs:
           pip install -r requirements.txt
 
       # mlflow.db and mlruns/ are gitignored, so the runner starts with no registry at all.
-      # Building it here is the point: the gate scores a champion this commit produced from
-      # the dataset URL and nothing else, which is the same thing a clean clone would get.
-      - name: Run the sweep and register a champion
-        run: python -m mlops_loop train
+      # That is the point: `reproduce` runs skeleton, train, eval, drift, reports and the gate
+      # again, so every push proves the whole loop still works from nothing but this commit and
+      # the dataset URL. It exits non-zero if the gate fails, which is what makes CI a gate.
+      - name: Reproduce the whole loop
+        run: python -m mlops_loop reproduce
 
-      - name: Run the eval gate
-        run: python -m mlops_loop eval
-
-      - name: Upload the gate artifacts
+      - name: Upload the generated reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sweep-comparison
-          path: reports/sweep_comparison.md
+          name: reports
+          path: reports/
           if-no-files-found: warn

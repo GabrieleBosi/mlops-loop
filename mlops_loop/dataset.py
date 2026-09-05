@@ -39,7 +39,7 @@ def prepare(
     cfg = cfg if cfg is not None else config.skeleton_config()
     drift = drift if drift is not None else config.drift_config()
     data_dir = Path(data_dir) if data_dir is not None else config.repo_root() / "data"
-    future_rule = drift["future_batch"]
+    future_batches = drift["future_batches"]
 
     with step("ingest"):
         raw = ingest.ingest(source or cfg["data"]["url"], data_dir, log=log)
@@ -57,7 +57,7 @@ def prepare(
             holdout_fraction=cfg["split"]["holdout_fraction"],
             val_fraction=cfg["split"]["val_fraction"],
             seed=cfg["split"]["seed"],
-            future_rule=future_rule,
+            future_batches=future_batches,
         )
         if log:
             split.log_splits(
@@ -65,7 +65,7 @@ def prepare(
                 seed=cfg["split"]["seed"],
                 holdout_fraction=cfg["split"]["holdout_fraction"],
                 val_fraction=cfg["split"]["val_fraction"],
-                future_rule=future_rule,
+                future_batches=future_batches,
                 data_dir=data_dir,
             )
 
