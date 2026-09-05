@@ -1,0 +1,42 @@
+# The gate. `python -m mlops_loop eval` loads models:/churn@champion, scores the fixed
+# holdout, and exits 1 if any line here fails.
+#
+# These numbers were written and committed BEFORE the sweep in Session 2 existed, so they
+# could not be chosen to fit its winner. They are a regression gate against the Session 1
+# baseline, not a target picked to be reachable.
+#
+# Baseline: run ae4f0cd88d4b4d439bbcadb545bd01b6, commit 605ab742, one LogisticRegression
+# (C=1.0, lbfgs) fitted on the 2,680-row reference train split, scored on the 1,057-row
+# fixed holdout. Recorded in docs/status.md, Session 1.
+#
+# Tolerance rule, chosen once and applied to every line: 0.02 absolute for the two AUCs,
+# 0.05 absolute for recall at precision 0.5 because it moves in coarser steps, and 20 %
+# relative for Brier because a calibration regression matters proportionally. Any champion
+# that clears these is no worse than what Session 1 already shipped.
+
+split: holdout
+
+metrics:
+  # Baseline 0.8186 - 0.02. Ranking quality. Below this the model is worse than the first
+  # thing that ever worked.
+  holdout_roc_auc:
+    direction: higher_is_better
+    threshold: 0.7986
+
+  # Baseline 0.5971 - 0.02. The selection metric on val, so the holdout number is the one
+  # that says selection generalised rather than fitted the validation split.
+  holdout_pr_auc:
+    direction: higher_is_better
+    threshold: 0.5771
+
+  # Baseline 0.7536 - 0.05. The operational number: how many churners are caught when at
+  # least half of the flagged customers must really be churning.
+  holdout_recall_at_precision_50:
+    direction: higher_is_better
+    threshold: 0.7036
+
+  # Baseline 0.1493 x 1.20. Calibration. A model selected on PR-AUC can rank well and still
+  # return probabilities that are badly wrong, and this is the line that catches it.
+  holdout_brier:
+    direction: lower_is_better
+    threshold: 0.1792
