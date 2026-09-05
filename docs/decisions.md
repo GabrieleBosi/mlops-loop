@@ -188,3 +188,100 @@ Three commands rebuilding splits from three copies of the same code is how they 
 the gate must score the exact rows the sweep's winner was measured on. Rebuilding is cheap and
 seeded, so it is preferred to trusting `data/splits/*.parquet`, which is gitignored and absent
 on a fresh runner.
+
+## 2026-09-05 Two future batches, carved from the pool Session 1 already reserved
+`configs/drift.yaml` defines `fibre-monthly` (fibre and month-to-month, 1,451 rows, churn 0.541)
+and `fibre-committed` (fibre and a one or two year contract, 663 rows, churn 0.121). Together they
+are exactly the 2,114-row fibre pool Session 1 carved out, so train, val and holdout did not move
+and the Session 2 champion and thresholds stayed valid. The alternative, adding a second slice
+defined on a different column such as the top tenure quartile, would have taken rows out of train,
+changed the incumbent and forced a third re-derivation of the gate thresholds. Not worth it for a
+batch that would have said the same thing.
+
+Choosing them by `Contract` was the point rather than a convenience. Both batches drift the same
+way in the inputs, dominated by `InternetService` at PSI 26.97 and `MonthlyCharges` above 10, and
+in opposite directions in the label: one churns at 3.5 times the training rate and the other
+slightly below it. A monitor watching only inputs cannot separate them, which is the argument for
+never letting a PSI breach promote anything by itself.
+
+## 2026-09-05 PSI: quantile bins from the reference, epsilon rather than infinity
+`PSI = sum over bins of (actual - expected) * ln(actual / expected)`, in numpy, in
+`monitor.psi`. Numeric columns use ten quantile bins of the reference so the index does not depend
+on units and each reference bin holds a similar number of rows; categorical columns use one bin
+per value seen in either sample, so a category new to the batch is a bin the reference never
+filled. A bin empty on one side would send the logarithm to infinity, so empty proportions become
+1e-6, which turns a brand new category into a large finite number that can be logged, compared to
+a threshold and put in a table. `InternetService` comes out at 26.97 rather than inf.
+
+The function is not symmetric in its arguments for numeric columns, because the bins come from the
+reference. That is intended for monitoring, where the reference is fixed and the batch is what
+arrives, and `tests/test_monitor.py` asserts both the symmetry that does hold for categories and
+the asymmetry that does not for numerics. Two hand-computed cases pin the arithmetic: reference
+shares 0.8/0.2 against actual 0.5/0.5 gives 0.4158883083 on both the categorical and the numeric
+path.
+
+Thresholds are the conventional credit-scoring reading, 0.25 for the major-shift line, listed once
+per feature rather than defaulted, because an unlisted feature is a feature nobody decided about.
+`monitor.feature_psi` stops if that list and `features.FEATURE_COLUMNS` disagree. The prediction
+distribution gets the tighter 0.10 moderate line: individual features can move without the output
+moving, and if the output has moved the model is already being asked a different question.
+
+## 2026-09-05 The challenger is the champion's own configuration on more data
+`retrain.champion_config` reads the family and hyperparameters back off the champion's run rather
+than out of a config file, so the challenger differs from the champion in its training rows and
+nothing else and the comparison isolates the data change. MLflow stores params as strings;
+`yaml.safe_load` turns them back into numbers, booleans and nulls, with `"None"` mapped to None.
+A champion run without a `model_family` param stops the retrain with a message rather than
+silently falling back to a default estimator.
+
+## 2026-09-05 Promotion margin 0.01 PR-AUC on the fixed holdout
+A challenger replaces the champion only if PR-AUC improves by more than 0.01, both models scored
+in the same run on the same 1,057 holdout rows, neither trained on them. 0.01 is roughly twice the
+gap between adjacent configs at the top of the Session 2 sweep (0.5851, 0.5731, 0.5667), so a
+challenger has to beat more than the noise between two neighbouring hyperparameter settings.
+Anything smaller and the champion would churn on measurement error. The rule was written before
+either batch ran and both outcomes it produced are recorded: `fibre-monthly` improved PR-AUC by
+0.0571 and was promoted, `fibre-committed` by -0.0015 and was rejected even though its ROC-AUC and
+recall both improved.
+
+## 2026-09-05 Holdout budget of two for a promotion decision, one for a sweep
+`split.HoldoutBudget` allows a fixed number of looks and records the reason for each. The sweep
+gets one, spent on the winner after selection is over, because selecting on the holdout would
+report the maximum of 14 samples rather than an estimate. A promotion decision gets two, one per
+model, because comparing two fixed candidates on the same rows is what the holdout is for. The
+budget is asserted fully spent before either returns, so an unspent look is as much an error as an
+extra one.
+
+## 2026-09-05 Error analysis: attribution in code, four components, pipeline order
+`mlops_loop/analysis.py` charges every misclassified holdout row to the first component in
+pipeline order that could have prevented it, by rules that are code rather than judgement: split
+if the row sits outside the categories or numeric ranges its champion's training rows cover;
+features if its 25 nearest training neighbours in the encoded space churn within 0.05 of the base
+rate; threshold if it is right at the validation-optimal cut and wrong at 0.5; model otherwise.
+The order means a row the training data never covered is charged to the split even though the
+model also got it wrong, because fixing the model cannot help a region the data never contained.
+
+Two details matter for honesty. The comparison is against the rows the champion was actually
+fitted on, read from its `trained_on` param, not against the train split: a challenger promoted by
+drift was fitted on train plus a batch, and charging the split for a region it has since seen
+would flatter the model. And the threshold rule uses the validation-optimal cut, never one tuned
+on the holdout, because a holdout-tuned threshold would make that component unfalsifiable.
+
+The result on champion version 3: 254 of 1,057 rows wrong, split 1, features 40, model 188,
+threshold 25. The biggest cell is `model`, and 140 of those 188 are confident false positives at a
+median probability of 0.739. Not fixed in this session, by design.
+
+## 2026-09-05 drift.py holds the orchestration, apart from monitor.py and retrain.py
+The brief's layout names `monitor.py` and `retrain.py`. `retrain` imports `monitor` for the result
+type it consumes, so the loop that runs one then the other cannot live in either without a cycle.
+`mlops_loop/drift.py` is that loop and nothing else: prepare the data once, then for each batch
+monitor, and retrain where PSI breached. It reloads the champion before each batch, so a promotion
+made on the first batch is what the second is measured against, which is the order the real system
+would see them in.
+
+## 2026-09-05 reproduce ends with the gate, not with drift
+`python -m mlops_loop reproduce` runs skeleton, train, eval, drift, reports, and then eval again.
+The second gate is not redundant: drift can promote a challenger, so a gate that ran before the
+last promotion has not gated what is actually serving. It costs two seconds. CI runs `reproduce`
+rather than `train` then `eval` for the same reason, and because a runner that starts with no
+registry proves the whole loop rebuilds from this commit and the dataset URL and nothing else.
