@@ -3,12 +3,18 @@ name: ci
 on:
   push:
   pull_request:
+  schedule:
+    # Mondays 04:17 UTC. The dataset is fetched from a URL that can change under us, and the
+    # sweep is deterministic, so a weekly run that goes red means the world moved, not the
+    # code. GitHub only runs scheduled workflows on the default branch.
+    - cron: "17 4 * * 1"
 
 permissions:
   contents: read
 
 jobs:
   test:
+    name: pytest
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -28,5 +34,37 @@ jobs:
       - name: Run tests
         run: pytest -q
 
-      # Session 2 adds the eval gate here: `python -m mlops_loop eval` must exit non-zero
-      # below the thresholds in configs/thresholds.yaml.
+  gate:
+    name: sweep and eval gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # mlflow.db and mlruns/ are gitignored, so the runner starts with no registry at all.
+      # Building it here is the point: the gate scores a champion this commit produced from
+      # the dataset URL and nothing else, which is the same thing a clean clone would get.
+      - name: Run the sweep and register a champion
+        run: python -m mlops_loop train
+
+      - name: Run the eval gate
+        run: python -m mlops_loop eval
+
+      - name: Upload the gate artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sweep-comparison
+          path: reports/sweep_comparison.md
+          if-no-files-found: warn
