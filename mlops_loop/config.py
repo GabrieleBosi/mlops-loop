@@ -75,3 +75,25 @@ def drift_config(path: Path | str | None = None) -> dict[str, Any]:
     if not isinstance(rule, dict) or "column" not in rule or "equals" not in rule:
         raise ValueError(f"{p}: future_batch must set 'column' and 'equals'")
     return cfg
+
+
+def sweep_config(path: Path | str | None = None) -> dict[str, Any]:
+    """Load configs/sweep.yaml and check the shape the sweep depends on."""
+    p = Path(path) if path is not None else repo_root() / "configs" / "sweep.yaml"
+    cfg = load_yaml(p)
+    selection = cfg.get("selection")
+    if not isinstance(selection, dict) or "metric" not in selection or "split" not in selection:
+        raise ValueError(f"{p}: selection must set 'metric' and 'split'")
+    if not isinstance(cfg.get("configs"), list) or not cfg["configs"]:
+        raise ValueError(f"{p}: configs must be a non-empty list")
+    return cfg
+
+
+def thresholds_config(path: Path | str | None = None) -> dict[str, Any]:
+    """Load configs/thresholds.yaml. An empty or malformed gate is a failure, not a pass."""
+    p = Path(path) if path is not None else repo_root() / "configs" / "thresholds.yaml"
+    cfg = load_yaml(p)
+    metrics = cfg.get("metrics")
+    if not isinstance(metrics, dict) or not metrics:
+        raise ValueError(f"{p}: metrics must be a non-empty mapping, or the gate passes nothing")
+    return cfg

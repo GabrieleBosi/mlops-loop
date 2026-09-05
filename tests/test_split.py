@@ -25,10 +25,23 @@ def test_splits_are_disjoint_and_cover_the_input(splits: Splits, validated) -> N
     assert sum(len(part) for part in splits.as_dict().values()) == len(validated.frame)
 
 
-def test_future_batch_is_all_fibre_and_reference_has_none(splits: Splits) -> None:
+def test_future_batch_is_all_fibre_and_train_has_none(splits: Splits) -> None:
+    """Train still never meets the future batch, which is what Session 3 depends on."""
     assert (splits.future.InternetService == "Fiber optic").all()
     assert not (splits.train.InternetService == "Fiber optic").any()
-    assert not (splits.val.InternetService == "Fiber optic").any()
+
+
+def test_val_mirrors_the_holdout_population(splits: Splits) -> None:
+    """Val is drawn before the future batch, so it looks like the data the model serves.
+
+    Selecting on a val split that excluded fibre-optic customers picked a model whose
+    holdout ROC-AUC was 0.63. This assertion is that bug's regression test.
+    """
+    val_fibre = (splits.val.InternetService == "Fiber optic").mean()
+    holdout_fibre = (splits.holdout.InternetService == "Fiber optic").mean()
+    assert val_fibre > 0.2
+    assert abs(val_fibre - holdout_fibre) < 0.10
+    assert abs(splits.val.churn.mean() - splits.holdout.churn.mean()) < 0.05
 
 
 def test_holdout_keeps_the_population_mix(splits: Splits, validated) -> None:

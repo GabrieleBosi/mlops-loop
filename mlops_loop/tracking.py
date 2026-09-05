@@ -5,6 +5,8 @@ from __future__ import annotations
 import hashlib
 import os
 import subprocess
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import mlflow
@@ -78,3 +80,21 @@ def code_hash(path: Path | str) -> str:
 def bytes_hash(payload: bytes) -> str:
     """sha256 of raw bytes. Used for the dataset digest."""
     return hashlib.sha256(payload).hexdigest()
+
+
+@contextmanager
+def step(name: str):
+    """Tag the active run with a step's outcome and how long it took.
+
+    A run that stopped halfway carries step_<name>=failed on the step that stopped, so the
+    MLflow UI answers "where did it break" without opening a log.
+    """
+    started = time.perf_counter()
+    mlflow.set_tag(f"step_{name}", "running")
+    try:
+        yield
+    except Exception:
+        mlflow.set_tag(f"step_{name}", "failed")
+        raise
+    mlflow.set_tag(f"step_{name}", "ok")
+    mlflow.log_metric(f"seconds_{name}", round(time.perf_counter() - started, 3))

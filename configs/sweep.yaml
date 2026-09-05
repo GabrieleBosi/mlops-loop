@@ -1,0 +1,89 @@
+# The sweep. Every config is written out in full. There is no grid expansion in code and no
+# hyperparameter optimisation library, so what runs is exactly what is on this page and a
+# diff shows precisely which hyperparameter moved.
+#
+# Two families over one shared preprocessor. The scaler is redundant for the trees and
+# harmless, and using the same 45-column matrix for both families is what makes the runs
+# comparable: the same dataset digest and the same feature-code hash appear on every child.
+
+selection:
+  # Session 1 fixed the four metrics. Selection uses PR-AUC because the classes are
+  # imbalanced (26.5 % churn) and PR-AUC answers the question the business asks: of the
+  # customers we flag, how many are really leaving.
+  metric: pr_auc
+  split: val
+  direction: higher_is_better
+  # Ties break on Brier ascending, then on the order below, so the winner is deterministic.
+  tie_breaker: brier
+
+configs:
+  # --- logistic regression: the Session 1 family, swept over regularisation strength and
+  # --- whether the minority class is reweighted.
+  - name: lr-c0.05
+    family: logistic_regression
+    params: {C: 0.05, solver: lbfgs, max_iter: 1000, class_weight: null, random_state: 42}
+
+  - name: lr-c0.5
+    family: logistic_regression
+    params: {C: 0.5, solver: lbfgs, max_iter: 1000, class_weight: null, random_state: 42}
+
+  # The incumbent. configs/skeleton.yaml ships C=1.0, so this is the model currently in the
+  # registry. A sweep that cannot reproduce the champion it is trying to replace is not a
+  # regression check, and this line was missing from the first version of this file.
+  - name: lr-c1.0
+    family: logistic_regression
+    params: {C: 1.0, solver: lbfgs, max_iter: 1000, class_weight: null, random_state: 42}
+
+  - name: lr-c5.0
+    family: logistic_regression
+    params: {C: 5.0, solver: lbfgs, max_iter: 1000, class_weight: null, random_state: 42}
+
+  - name: lr-c0.05-balanced
+    family: logistic_regression
+    params: {C: 0.05, solver: lbfgs, max_iter: 1000, class_weight: balanced, random_state: 42}
+
+  - name: lr-c0.5-balanced
+    family: logistic_regression
+    params: {C: 0.5, solver: lbfgs, max_iter: 1000, class_weight: balanced, random_state: 42}
+
+  - name: lr-c1.0-balanced
+    family: logistic_regression
+    params: {C: 1.0, solver: lbfgs, max_iter: 1000, class_weight: balanced, random_state: 42}
+
+  - name: lr-c5.0-balanced
+    family: logistic_regression
+    params: {C: 5.0, solver: lbfgs, max_iter: 1000, class_weight: balanced, random_state: 42}
+
+  # --- histogram gradient boosting: can it find interactions the linear model cannot.
+  # --- early_stopping is off so every config trains for exactly max_iter rounds and the
+  # --- validation split is never seen during fitting.
+  - name: hgb-lr0.05-leaf15
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.05, max_iter: 200, max_leaf_nodes: 15, min_samples_leaf: 20,
+             l2_regularization: 0.0, early_stopping: false, random_state: 42}
+
+  - name: hgb-lr0.05-leaf31
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.05, max_iter: 200, max_leaf_nodes: 31, min_samples_leaf: 20,
+             l2_regularization: 0.0, early_stopping: false, random_state: 42}
+
+  - name: hgb-lr0.10-leaf15
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.10, max_iter: 200, max_leaf_nodes: 15, min_samples_leaf: 20,
+             l2_regularization: 0.0, early_stopping: false, random_state: 42}
+
+  - name: hgb-lr0.10-leaf15-l2
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.10, max_iter: 200, max_leaf_nodes: 15, min_samples_leaf: 20,
+             l2_regularization: 1.0, early_stopping: false, random_state: 42}
+
+  - name: hgb-lr0.05-leaf15-balanced
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.05, max_iter: 200, max_leaf_nodes: 15, min_samples_leaf: 20,
+             l2_regularization: 0.0, early_stopping: false, class_weight: balanced,
+             random_state: 42}
+
+  - name: hgb-lr0.05-leaf63-deep
+    family: hist_gradient_boosting
+    params: {learning_rate: 0.05, max_iter: 300, max_leaf_nodes: 63, min_samples_leaf: 10,
+             l2_regularization: 0.0, early_stopping: false, random_state: 42}

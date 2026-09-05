@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import time
-from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import mlflow
 
-from . import config, evaluate, features, ingest, register, serve, split, tracking, validate
+from . import config, dataset, evaluate, features, register, serve, split, tracking
+from .tracking import step
 
 
 @dataclass(frozen=True)
@@ -25,20 +24,6 @@ class SkeletonResult:
     feature_code_hash: str
     git_commit: str
     serve_check: dict[str, Any]
-
-
-@contextmanager
-def step(name: str):
-    """Tag the run with each step's outcome, so a failure names the step that stopped."""
-    started = time.perf_counter()
-    mlflow.set_tag(f"step_{name}", "running")
-    try:
-        yield
-    except Exception:
-        mlflow.set_tag(f"step_{name}", "failed")
-        raise
-    mlflow.set_tag(f"step_{name}", "ok")
-    mlflow.log_metric(f"seconds_{name}", round(time.perf_counter() - started, 3))
 
 
 def run(
@@ -56,7 +41,6 @@ def run(
     drift = config.drift_config(drift_path)
     root = config.repo_root()
     data_dir = Path(data_dir) if data_dir is not None else root / "data"
-    future_rule = drift["future_batch"]
 
     experiment_id = tracking.configure()
     git = tracking.git_info()
@@ -67,31 +51,8 @@ def run(
         mlflow.log_artifact(str(root / "configs" / "skeleton.yaml"), artifact_path="configs")
         mlflow.log_artifact(str(root / "configs" / "drift.yaml"), artifact_path="configs")
 
-        with step("ingest"):
-            raw = ingest.ingest(source or cfg["data"]["url"], data_dir)
-
-        with step("validate"):
-            validated = validate.validate(raw.frame)
-            mlflow.log_metric(
-                "total_charges_blank_count", float(validated.total_charges_blank_count)
-            )
-
-        with step("split"):
-            splits = split.split(
-                validated.frame,
-                holdout_fraction=cfg["split"]["holdout_fraction"],
-                val_fraction=cfg["split"]["val_fraction"],
-                seed=cfg["split"]["seed"],
-                future_rule=future_rule,
-            )
-            split.log_splits(
-                splits,
-                seed=cfg["split"]["seed"],
-                holdout_fraction=cfg["split"]["holdout_fraction"],
-                val_fraction=cfg["split"]["val_fraction"],
-                future_rule=future_rule,
-                data_dir=data_dir,
-            )
+        prepared = dataset.prepare(cfg=cfg, drift=drift, data_dir=data_dir, source=source)
+        splits = prepared.splits
 
         model_params = {k: v for k, v in cfg["model"].items()}
 
@@ -139,7 +100,7 @@ def run(
             model_version=registered.version,
             metrics=metrics,
             rows={name: len(part) for name, part in splits.as_dict().items()},
-            dataset_sha256=raw.sha256,
+            dataset_sha256=prepared.dataset_sha256,
             feature_code_hash=features.feature_code_hash(),
             git_commit=git["git_commit"],
             serve_check=checked,

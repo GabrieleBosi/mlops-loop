@@ -10,8 +10,6 @@ import sys
 from . import tracking
 
 NOT_BUILT = {
-    "train": ("Session 2", "tracked sweep over configs/sweep.yaml"),
-    "eval": ("Session 2", "gate against configs/thresholds.yaml"),
     "drift": ("Session 3", "PSI on the future batch, retrain and challenge"),
     "reproduce": ("Session 3", "skeleton, train, eval, drift and reports end to end"),
 }
@@ -27,6 +25,18 @@ def build_parser() -> argparse.ArgumentParser:
     skeleton = subparsers.add_parser("skeleton", help="steps 1 to 8 once, one model, all logged")
     skeleton.add_argument("--config", default=None, help="path to skeleton.yaml")
     skeleton.add_argument("--source", default=None, help="override the dataset URL with a path")
+
+    train = subparsers.add_parser("train", help="tracked sweep over configs/sweep.yaml")
+    train.add_argument("--config", default=None, help="path to skeleton.yaml")
+    train.add_argument("--sweep", default=None, help="path to sweep.yaml")
+    train.add_argument("--source", default=None, help="override the dataset URL with a path")
+
+    evaluate = subparsers.add_parser(
+        "eval", help="gate the champion against configs/thresholds.yaml, exit 1 on failure"
+    )
+    evaluate.add_argument("--config", default=None, help="path to skeleton.yaml")
+    evaluate.add_argument("--thresholds", default=None, help="path to thresholds.yaml")
+    evaluate.add_argument("--source", default=None, help="override the dataset URL with a path")
 
     serve = subparsers.add_parser("serve", help="FastAPI on :8000 serving models:/churn@champion")
     serve.add_argument("--host", default="127.0.0.1")
@@ -59,6 +69,26 @@ def main(argv: list[str] | None = None) -> int:
         result = skeleton.run(config_path=args.config, source=args.source)
         print(skeleton.format_result(result))
         return 0
+
+    if args.command == "train":
+        from . import train
+
+        result = train.run(config_path=args.config, sweep_path=args.sweep, source=args.source)
+        print(train.format_result(result))
+        return 0
+
+    if args.command == "eval":
+        from . import gate
+
+        try:
+            result = gate.run(
+                config_path=args.config, thresholds_path=args.thresholds, source=args.source
+            )
+        except gate.GateError as exc:
+            print(f"eval gate could not run: {exc}", file=sys.stderr)
+            return 1
+        print(gate.format_result(result))
+        return 0 if result.passed else 1
 
     if args.command == "serve":
         import uvicorn

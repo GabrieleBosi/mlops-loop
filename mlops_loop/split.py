@@ -42,10 +42,24 @@ def split(
 ) -> Splits:
     """Partition the validated frame into four disjoint sets.
 
-    Order matters. The holdout is drawn first, stratified on churn over the whole
-    population, so it stays a fair scoreboard for any model trained later, including one
-    trained on the future batch. The future batch is then carved from what is left, which
-    is why the reference model never sees a fibre-optic customer.
+    Order matters, and it is: holdout, then val, then the future batch, then train.
+
+    The holdout is drawn first, stratified on churn over the whole population, so it stays a
+    fair scoreboard for any model trained later, including one trained on the future batch.
+
+    Val is drawn next, from the same population, and only then is the future batch carved
+    out of what remains. That ordering is the point: val has to be drawn from the
+    distribution the champion will serve, or it cannot rank candidate models by anything
+    that matters. Session 2 found this the hard way. When val was taken from the
+    reference pool instead, it contained no fibre-optic customer, so it scored every
+    candidate on an easy sub-population and selected a gradient-boosting model whose
+    holdout ROC-AUC was 0.63 against the linear model's 0.80. Drawing val from the
+    population lifted the correlation between validation and holdout PR-AUC across the
+    twelve sweep configs to 0.97. See docs/decisions.md, 2026-09-05.
+
+    Train is what is left after the future batch is removed, so it still contains no
+    fibre-optic customer and the champion still meets that slice for the first time in
+    Session 3.
     """
     if frame.empty:
         raise SplitError("cannot split an empty frame")
@@ -67,16 +81,16 @@ def split(
         stratify=frame[TARGET_INT],
     )
 
-    future_mask = rest[column] == equals
-    future = rest[future_mask]
-    reference = rest[~future_mask]
-
-    train, val = train_test_split(
-        reference,
+    remaining, val = train_test_split(
+        rest,
         test_size=val_fraction,
         random_state=seed,
-        stratify=reference[TARGET_INT],
+        stratify=rest[TARGET_INT],
     )
+
+    future_mask = remaining[column] == equals
+    future = remaining[future_mask]
+    train = remaining[~future_mask]
 
     splits = Splits(
         train=train.reset_index(drop=True),
@@ -117,6 +131,53 @@ def _assert_partition(splits: Splits, frame: pd.DataFrame) -> None:
             f"splits cover {len(union)} ids but the input has {len(expected)}; "
             f"missing {len(expected - union)}, unexpected {len(union - expected)}"
         )
+
+
+class HoldoutBudget:
+    """A holdout that can be handed out a fixed number of times, and counts.
+
+    Selection is what corrupts a holdout: score every candidate on it, pick the best, and
+    the number you report is the maximum of a sample rather than an estimate. The sweep
+    therefore selects on val and gets exactly one look at the holdout, for the winner only.
+    This class is where "exactly one" stops being a promise and becomes an exception.
+    """
+
+    def __init__(self, frame: pd.DataFrame, budget: int = 1) -> None:
+        if budget < 1:
+            raise SplitError(f"holdout budget must be at least 1, got {budget}")
+        self._frame = frame
+        self._budget = budget
+        self._spends: list[str] = []
+
+    @property
+    def spent(self) -> int:
+        return len(self._spends)
+
+    @property
+    def reasons(self) -> list[str]:
+        return list(self._spends)
+
+    @property
+    def rows(self) -> int:
+        return len(self._frame)
+
+    def spend(self, reason: str) -> pd.DataFrame:
+        """Hand out the holdout once, against the budget, recording why."""
+        if self.spent >= self._budget:
+            raise SplitError(
+                f"holdout budget of {self._budget} is already spent on {self._spends}; "
+                f"refused a further look for {reason!r}. Score on val instead."
+            )
+        self._spends.append(reason)
+        return self._frame
+
+    def assert_fully_spent(self) -> None:
+        """Fail closed if the budget was not used exactly as planned."""
+        if self.spent != self._budget:
+            raise SplitError(
+                f"expected the holdout to be scored {self._budget} time(s), it was scored "
+                f"{self.spent}: {self._spends}"
+            )
 
 
 def assert_holdout_unseen(fit_frame: pd.DataFrame, holdout: pd.DataFrame) -> None:

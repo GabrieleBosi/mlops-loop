@@ -17,6 +17,9 @@ class RegistryError(Exception):
     """Raised when the registry does not hold what the pipeline just put there."""
 
 
+PREVIOUS_ALIAS = "previous"
+
+
 @dataclass(frozen=True)
 class Registered:
     name: str
@@ -26,6 +29,7 @@ class Registered:
     model_id: str
     model_uri: str
     alias_uri: str
+    previous_version: str | None = None
 
 
 @dataclass(frozen=True)
@@ -65,9 +69,7 @@ def register(
     if version is None:
         raise RegistryError(f"log_model did not return a registered version for '{name}'")
 
-    client = MlflowClient()
-    if promote:
-        client.set_registered_model_alias(name, alias, str(version))
+    previous = promote_to_champion(name, alias, str(version)) if promote else None
 
     return Registered(
         name=name,
@@ -77,7 +79,39 @@ def register(
         model_id=str(info.model_id),
         model_uri=str(info.model_uri),
         alias_uri=f"models:/{name}@{alias}",
+        previous_version=previous,
     )
+
+
+def promote_to_champion(name: str, alias: str, version: str) -> str | None:
+    """Move the champion alias to version, and park the outgoing one under 'previous'.
+
+    Nothing is deleted. The outgoing champion keeps its version number and stays loadable
+    as models:/<name>@previous, which is what a rollback needs and what Session 3's
+    challenger comparison reads. Returns the version that was demoted, or None if this is
+    the first champion or a re-promotion of the same version.
+    """
+    client = MlflowClient()
+    try:
+        current = client.get_model_version_by_alias(name, alias)
+    except Exception:
+        current = None
+
+    demoted: str | None = None
+    if current is not None and str(current.version) != str(version):
+        client.set_registered_model_alias(name, PREVIOUS_ALIAS, str(current.version))
+        demoted = str(current.version)
+
+    client.set_registered_model_alias(name, alias, str(version))
+    return demoted
+
+
+def previous_champion(name: str = "churn") -> ChampionInfo | None:
+    """The demoted champion, if there is one. None before the second promotion."""
+    try:
+        return champion_info(name=name, alias=PREVIOUS_ALIAS)
+    except RegistryError:
+        return None
 
 
 def champion_info(name: str = "churn", alias: str = "champion") -> ChampionInfo:
