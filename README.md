@@ -41,7 +41,8 @@ python -m mlops_loop serve        # FastAPI on :8000
 pytest -q                         # offline, no network, on the committed 500-row fixture
 ```
 
-`skeleton` downloads the dataset on the first run and writes it to `data/`, which is gitignored.
+`skeleton` fetches the dataset on every run and writes it to `data/`, which is gitignored, so
+the sha256 on the run is always the digest of the bytes that run actually used.
 The MLflow backend is `sqlite:///mlflow.db` with artifacts under `./mlruns`, both gitignored, so a
 clean clone starts from nothing and rebuilds its own history.
 
@@ -55,7 +56,8 @@ Params: `dataset_source`, `dataset_sha256`, `feature_code_hash`, `n_encoded_feat
 hyperparameter.
 
 Metrics: `raw_rows`, `total_charges_blank_count`, `rows_*` and `churn_rate_*` per split,
-`val_*` and `holdout_*` for the four evaluation metrics, and `seconds_*` per step.
+`val_*`, `holdout_*` and `future_*` for the four evaluation metrics, and `seconds_*` per
+step.
 
 Tags: `git_commit`, `git_dirty`, `phase`, `model_name`, `model_version`, `model_alias`, and
 `step_<name>` for each of the eight steps, so a failure names the step that stopped.

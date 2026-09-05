@@ -64,4 +64,20 @@ temporary MLflow store and exercises `/health` and `/predict` through `TestClien
 
 ### CI
 Workflow `.github/workflows/ci.yml` runs `pytest -q` on ubuntu-latest with Python 3.12, on push and
-pull request. First run: recorded below once the repo is pushed.
+pull request.
+
+Green: https://github.com/GabrieleBosi/mlops-loop/actions/runs/33947087136 at commit `4bf3855`.
+
+The first run failed, and it was a real bug rather than a flake:
+https://github.com/GabrieleBosi/mlops-loop/actions/runs/33946866722. CI calls `pytest -q`, which
+does not put the working directory on `sys.path`, while every local check had used
+`python -m pytest`, which does. All four test modules failed to import `mlops_loop`. Fixed by
+`pythonpath = ["."]` in `pyproject.toml`, and the suite is now checked with the bare `pytest`
+command the README documents and CI runs. Note for later sessions: run the command CI runs, not a
+convenient equivalent.
+
+### Repository
+https://github.com/GabrieleBosi/mlops-loop, public, MIT. `.env`, `data/`, `mlruns/` and `mlflow.db`
+have been gitignored since the first commit; the tracked tree was grepped for `sk-ant`, `API_KEY=`,
+`ghp_`, `github_pat_`, AWS key ids and PEM private-key headers before it was pushed, and none is
+present. 36 files tracked, no dataset and no MLflow store among them.
