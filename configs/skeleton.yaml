@@ -1,0 +1,25 @@
+# Session 1 skeleton: one pass through steps 1 to 8, one model.
+data:
+  # Verified 2026-09-05: HTTP 200, 970457 bytes, sha256
+  # 16320c9c1ec72448db59aa0a26a0b95401046bef5d02fd3aeb906448e3055e91, 7043 rows, 21 columns.
+  url: https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv
+
+split:
+  # Scored, never trained on. Drawn from the whole population so it stays comparable
+  # across champion and challenger in Session 3.
+  holdout_fraction: 0.15
+  # Of the reference rows that remain after the holdout and the future batch are removed.
+  val_fraction: 0.20
+  seed: 42
+
+model:
+  # One LogisticRegression. The sweep over these lands in Session 2.
+  C: 1.0
+  solver: lbfgs
+  max_iter: 1000
+  class_weight: null
+  random_state: 42
+
+registry:
+  name: churn
+  alias: champion

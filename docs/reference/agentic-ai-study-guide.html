@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#EDF0F2">
+<title>Agentic AI Engineering — Field Guide</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root{
+  --paper:#EDF0F2;
+  --panel:#FBFCFD;
+  --ink:#161B21;
+  --muted:#5C6772;
+  --line:#D3DAE0;
+  --accent:#0E7490;
+  --accent-deep:#0B5A70;
+  --accent-tint:#E4EEF1;
+  --ok:#1A7A4A;
+  --ok-tint:#E6F2EB;
+  --err:#B3261E;
+  --err-tint:#F8E9E8;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+button{font-family:inherit;font-size:inherit;color:inherit;background:none;border:none;cursor:pointer;text-align:left;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.display{font-family:'IBM Plex Sans Condensed','IBM Plex Sans',sans-serif;font-weight:700;letter-spacing:-0.01em}
+.mono{font-family:'IBM Plex Mono',monospace}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:2px}
+.mb4{margin-bottom:4px}.mb12{margin-bottom:12px}.mb20{margin-bottom:20px}.mb24{margin-bottom:24px}.mt20{margin-top:20px}
+.rowbetween{display:flex;align-items:baseline;justify-content:space-between}
+.narrow{max-width:560px;margin:0 auto}
+
+/* header */
+.masthead{border-bottom:1px solid var(--line);background:var(--panel)}
+.mastinner{max-width:960px;margin:0 auto;padding:18px 16px 0}
+.mastrow{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.doctitle{font-size:24px;line-height:1.05;text-transform:uppercase;margin:0}
+.doctitle .dot{color:var(--accent)}
+.docmeta{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;color:var(--muted);margin-top:6px}
+.loopbadge{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:2px;padding:6px 10px;background:var(--paper)}
+.loopdot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.6s ease-in-out infinite}
+.loopseg{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--muted);transition:color .3s}
+.loopseg.on{color:var(--accent-deep);font-weight:600}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+.meterrow{display:flex;justify-content:space-between;align-items:center;padding:8px 0 0}
+.meterlabel{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:0.1em;color:var(--muted)}
+.metertrack{height:4px;background:var(--line);margin-top:6px}
+.meterfill{height:100%;background:var(--accent);transition:width .4s ease}
+
+.tabs{display:flex;gap:2px;margin-top:12px}
+.tab{flex:1;text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;padding:12px 8px;border:1px solid var(--line);border-bottom:none;border-radius:2px 2px 0 0;background:var(--paper);color:var(--muted)}
+.tab.on{background:var(--panel);color:var(--ink);font-weight:600;position:relative}
+.tab.on::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
+
+.main{max-width:960px;margin:0 auto;padding:20px 16px 72px}
+
+/* study layout */
+.modchips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:14px;-webkit-overflow-scrolling:touch}
+.modsidebar{display:none}
+.chip{flex-shrink:0;font-size:13px;padding:9px 12px;min-height:40px;border:1px solid var(--line);border-radius:2px;background:var(--panel);color:var(--muted);white-space:nowrap}
+.chip .mono{font-size:11px;margin-right:2px}
+.chip.on{border-color:var(--accent);color:var(--accent-deep);font-weight:600;background:var(--accent-tint)}
+.chip.chipdone:not(.on){border-left:3px solid var(--accent)}
+
+.navrow{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border-radius:2px;font-size:14px;color:var(--muted)}
+.navrow:hover{background:var(--accent-tint);color:var(--ink)}
+.navrow.on{background:var(--panel);border:1px solid var(--line);color:var(--ink);font-weight:600}
+.navnum{font-size:11px;color:var(--muted)}
+.navtitle{flex:1;min-width:0}
+.checksq{width:16px;height:16px;border:1px solid var(--line);border-radius:2px;background:var(--panel);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff}
+.checksq.done{background:var(--accent);border-color:var(--accent)}
+
+.modtitle{font-size:23px;text-transform:uppercase;margin:2px 0 10px}
+.intro{color:var(--muted);max-width:60ch;margin:0 0 18px}
+
+.concept{border-bottom:1px solid var(--line)}
+.concept:last-child{border-bottom:none}
+.conceptbtn{display:flex;align-items:baseline;gap:12px;width:100%;padding:15px 14px}
+.conceptbtn:active{background:var(--accent-tint)}
+.conceptidx{font-size:11px;color:var(--accent-deep)}
+.concepttitle{flex:1;font-weight:600;font-size:15px}
+.conceptcaret{color:var(--muted);font-size:14px}
+.conceptbody{padding:0 14px 16px 37px;margin:0;max-width:68ch}
+
+.fieldnote{border-left:3px solid var(--accent);background:var(--accent-tint);padding:12px 14px;border-radius:0 2px 2px 0}
+.fieldnote p{margin:0;font-weight:500}
+
+.btnrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.btnrow.center{justify-content:center}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:14px;font-weight:600;padding:10px 16px;min-height:44px;border-radius:2px;border:1px solid transparent}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:active{background:var(--accent-deep)}
+.btn-ghost{background:var(--panel);border-color:var(--line);color:var(--ink)}
+.btn-ghost:active{border-color:var(--accent);color:var(--accent-deep)}
+
+/* diagram */
+.diagwrap{overflow-x:auto;padding:14px;-webkit-overflow-scrolling:touch}
+.loopsvg{width:100%;min-width:560px;height:auto;color:var(--ink);display:block}
+.loopbox rect{fill:var(--panel);stroke:var(--ink);stroke-width:1.25}
+.loopbox text{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:0.08em;fill:var(--ink)}
+.looparrow line,.looparrow path{stroke:var(--ink);stroke-width:1.25;color:var(--ink)}
+.looparrow.accent line,.looparrow.accent path{stroke:var(--accent);color:var(--accent)}
+.looparrow.dashed path{stroke-dasharray:4 4}
+.looplabel{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:0.08em;fill:var(--accent-deep);stroke:none}
+.looplabel.ink{fill:var(--muted)}
+
+/* flashcards */
+.fc-scene{perspective:1200px;height:300px;cursor:pointer}
+.fc{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.fc.flipped{transform:rotateY(180deg)}
+.fc-face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px}
+.fc-back{transform:rotateY(180deg);border-top:3px solid var(--accent)}
+.fcterm{font-size:26px;text-transform:uppercase}
+.fchint{font-size:10px;letter-spacing:0.12em;color:var(--muted);margin-top:18px;text-transform:uppercase}
+.fcdef{max-width:44ch;margin:0;font-size:16px}
+.counter{font-size:12px;color:var(--muted)}
+
+/* quiz */
+.quizq{font-size:18px;font-weight:600;margin:0 0 16px;line-height:1.4}
+.opt{display:flex;gap:12px;align-items:baseline;width:100%;padding:13px 14px;min-height:48px;margin-bottom:8px;border:1px solid var(--line);border-radius:2px;background:var(--panel);font-size:14.5px}
+.opt:disabled{cursor:default}
+.optkey{font-size:11px;color:var(--muted)}
+.opt-correct{border-color:var(--ok);background:var(--ok-tint)}
+.opt-correct .optkey{color:var(--ok)}
+.opt-wrong{border-color:var(--err);background:var(--err-tint)}
+.opt-wrong .optkey{color:var(--err)}
+.opt-dim{opacity:.5}
+.verdict{border-radius:2px;padding:14px 16px}
+.verdict p{margin:0}
+.verdict-ok{background:var(--ok-tint);border-left:3px solid var(--ok)}
+.verdict-no{background:var(--err-tint);border-left:3px solid var(--err)}
+.verdicttag{font-size:11px;letter-spacing:0.14em;margin-bottom:6px;font-weight:600}
+.verdict-ok .verdicttag{color:var(--ok)}
+.verdict-no .verdicttag{color:var(--err)}
+.scoreline{font-size:48px;line-height:1;margin:6px 0 10px}
+.missrow{padding:12px 14px;border-bottom:1px solid var(--line)}
+.missrow:last-child{border-bottom:none}
+.missq{font-weight:600;font-size:14px;margin-bottom:4px}
+.missa{font-size:13.5px;color:var(--muted)}
+.missa .mono{font-size:10px;letter-spacing:0.12em;color:var(--ok);margin-right:6px}
+.scopechips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+
+@media (min-width:768px){
+  .doctitle{font-size:30px}
+  .modtitle{font-size:28px}
+  .fcterm{font-size:30px}
+  .mastinner{padding:20px 20px 0}
+  .main{padding:28px 20px 72px}
+  .tab{flex:0 0 auto;padding:10px 18px}
+  .modchips{display:none}
+  .modsidebar{display:block;width:256px;flex-shrink:0}
+  .layout{display:flex;gap:32px}
+  .content{flex:1;min-width:0}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+"use strict";
+
+/* ------------------------------ data ------------------------------ */
+
+var MODULES = [
+  {
+    id: "foundations", num: "01", tag: "Core model", title: "Foundations",
+    intro: "An agent is an LLM that directs its own process: it decides which steps to take, calls tools, observes results, and iterates until the goal is met. Everything else in this guide is engineering around that idea.",
+    concepts: [
+      { t: "Agent vs workflow", d: "Workflows orchestrate LLM calls and tools through predefined code paths: the developer owns control flow. Agents hand that decision to the model at runtime. Rule of thumb: use the simplest architecture that works. Agents trade determinism, cost, and latency for flexibility on open-ended tasks." },
+      { t: "The agentic loop", d: "Every agent reduces to one loop: gather context, reason about the next step, act through a tool, observe the result, repeat until done or stopped. Feedback from the environment re-entering context is what makes it agentic rather than a one-shot completion." },
+      { t: "The augmented LLM", d: "The base building block: a model extended with retrieval, tools, and memory. Even single-call systems benefit from augmentation. An agent is an augmented LLM run in a loop with real feedback from its environment." },
+      { t: "When to reach for an agent", d: "Good fit: tasks where the number and order of steps can't be predicted up front, like debugging, research, or multi-step operations. Bad fit: predictable pipelines, where a workflow buys you determinism, testability, and lower cost." }
+    ],
+    takeaway: "Agency is a dial, not a binary. Grant the model only as much control-flow authority as the task actually demands."
+  },
+  {
+    id: "tools", num: "02", tag: "Interfaces", title: "Tools & function calling",
+    intro: "Tools are the agent's hands. The model never executes anything itself: it proposes a structured call, your runtime executes it, and the result returns as context.",
+    concepts: [
+      { t: "Anatomy of a tool", d: "A tool is a name, a description, and JSON-schema parameters. The model emits a call matching the schema; the harness runs it and feeds the result back. Descriptions are prompts: write them like documentation for a junior engineer who has never seen your system." },
+      { t: "Designing good tools", d: "Few, orthogonal, task-shaped tools beat many overlapping micro-endpoints. Return errors that tell the model what to do next, not raw stack traces. Truncate and paginate outputs: token-hungry results poison the loop. This surface is the agent-computer interface, and it deserves the same care as a human UI." },
+      { t: "Model Context Protocol", d: "MCP is an open standard that turns the N-by-M problem of wiring models to tools into clients and servers: any MCP client can use any MCP server. Servers expose tools, resources, and prompts over a common contract." },
+      { t: "Structured output", d: "For routing, extraction, and decisions, constrain the model to a schema. Reliable JSON at every workflow boundary beats parsing prose, and it makes downstream code testable." }
+    ],
+    takeaway: "Most agent failures trace back to tool design, not model capability."
+  },
+  {
+    id: "planning", num: "03", tag: "Cognition", title: "Planning & reasoning",
+    intro: "Reasoning machinery keeps long tasks on track. Match its depth to the task horizon: too little and the agent drifts, too much and you pay in latency for nothing.",
+    concepts: [
+      { t: "ReAct", d: "Interleave reasoning traces with actions: thought, action, observation, repeated. Each reasoning step grounds the next action in what has actually been observed, which is why it recovers well from surprises." },
+      { t: "Plan, then execute", d: "Draft an explicit plan up front, execute the steps, and replan when reality diverges. It wins on long-horizon work. The classic failure is a stale plan followed blindly after the environment has moved." },
+      { t: "Decomposition & task lists", d: "Break goals into subgoals and keep the list in context. An externalized todo list acts as an attention anchor: after twenty tool calls it's what lets the agent recover the thread instead of wandering." },
+      { t: "Reflection", d: "A critique pass over the agent's own output, or by a second model, catches errors generation misses. It costs a round trip, so spend it where quality matters more than latency." }
+    ],
+    takeaway: "Plans are cheap insurance on long horizons and pure overhead on short ones."
+  },
+  {
+    id: "memory", num: "04", tag: "State", title: "Memory & context",
+    intro: "The context window is the agent's working memory and its scarcest resource. Context engineering, deciding what occupies it at each step, is the core craft of the discipline.",
+    concepts: [
+      { t: "Context engineering", d: "At every step, the window holds a budget: system prompt, tool definitions, history, retrieved data. Spend it deliberately. Curation beats accumulation, and the highest-signal tokens should always survive." },
+      { t: "Short-term memory", d: "Message history and scratchpads carry state within a run. As the budget fills, compact: summarize older turns and keep recent ones verbatim, so the agent retains the arc without the bulk." },
+      { t: "Long-term memory", d: "State that outlives a run gets externalized: files, databases, vector stores the agent reads and writes. Retrieve on demand instead of preloading everything, and let the agent maintain its own notes across sessions." },
+      { t: "Context failure modes", d: "Rot: recall and reasoning degrade as the window fills. Poisoning: one bad tool result or hallucination contaminates every later step. Distraction: irrelevant bulk crowds out signal. Defenses are the same: truncate, validate, isolate." }
+    ],
+    takeaway: "Treat the window like RAM: small, fast, precious. Page everything else in and out."
+  },
+  {
+    id: "orchestration", num: "05", tag: "Control flow", title: "Orchestration patterns",
+    intro: "Five composable workflow patterns cover most production systems. Learn them as vocabulary: real architectures are combinations, often workflows with agentic sections inside.",
+    concepts: [
+      { t: "Prompt chaining", d: "A fixed sequence of calls where each step transforms or validates the previous output, with programmatic gates between steps. Trades latency for accuracy by making each call easier." },
+      { t: "Routing", d: "Classify the input, then dispatch to a specialized prompt, model, or handler. Separation of concerns for inputs that fall into known categories, and a way to send cheap queries to cheap models." },
+      { t: "Parallelization", d: "Two flavors: sectioning, where independent subtasks run side by side, and voting, where the same task runs several times and answers are aggregated for confidence." },
+      { t: "Orchestrator–workers", d: "A lead model decomposes the task at runtime, delegates subtasks to workers, and synthesizes results. Like routing, except the shape of the subtasks isn't known in advance." },
+      { t: "Evaluator–optimizer", d: "A generator and a critic in a loop until the output clears the bar. Works when you can articulate what better means; fails when the rubric is vague." }
+    ],
+    takeaway: "These five compose. Most systems marketed as agents are workflows with one agentic section."
+  },
+  {
+    id: "multiagent", num: "06", tag: "Topology", title: "Multi-agent systems",
+    intro: "Multiple agents are a distributed system, with everything that implies. Reach for them for specific reasons, not by default.",
+    concepts: [
+      { t: "When multi-agent pays", d: "When the work exceeds one context window, when parallel exploration with separate contexts helps (broad research), or when you need hard isolation, like quarantining untrusted data away from privileged tools. Not for its own sake." },
+      { t: "Topologies", d: "Supervisor: a hub delegates to spokes and owns the result. Handoffs: ownership transfers between peers. Pipelines: staged specialists. Shared state versus message passing decides how tightly they couple." },
+      { t: "The costs", d: "Token multiplication, since each agent re-reads context. Compounding errors across boundaries. Coordination overhead. A single agent with good tools usually wins until proven otherwise." },
+      { t: "Interop protocols", d: "MCP connects agents to tools and context. A2A targets agent-to-agent discovery and exchange across vendors and frameworks, so heterogeneous agents can cooperate without bespoke glue." }
+    ],
+    takeaway: "Going multi-agent means inheriting distributed-systems failure modes. Budget for them."
+  },
+  {
+    id: "evals", num: "07", tag: "Measurement", title: "Evals & observability",
+    intro: "If you can't measure the loop, you can't improve it. Evals are the unit tests of agent engineering; traces are its debugger.",
+    concepts: [
+      { t: "Outcome vs trajectory", d: "Outcome evals ask whether the agent reached the right end state on real tasks. Trajectory evals grade the steps: tool choice, efficiency, recovery from errors. Start with outcomes, add trajectories when you need to know why." },
+      { t: "LLM-as-judge", d: "A strong model plus a written rubric scales grading past what humans can review. Calibrate it against human labels first, and watch for position and verbosity bias in its judgments." },
+      { t: "Tracing", d: "Log every step: prompts, tool calls, arguments, results, tokens, latency. Span-based tracing maps naturally onto agent steps. Without traces, debugging an agent is guesswork about a black box." },
+      { t: "Eval-driven iteration", d: "Start with roughly twenty hard tasks drawn from real failures. Grade automatically where possible. Promote every production incident into a test case, and run the suite on every prompt or tool change." }
+    ],
+    takeaway: "Small eval sets built from real failures beat large synthetic ones you never run."
+  },
+  {
+    id: "safety", num: "08", tag: "Trust", title: "Safety & reliability",
+    intro: "An agent with tools is an actor in your systems. Autonomy is earned in production, one privilege at a time.",
+    concepts: [
+      { t: "Prompt injection", d: "Anything the agent reads, from web pages to emails to tool output, can carry adversarial instructions. Treat observed content as data, never as commands. Confirm side effects with the user, and flag content that tries to direct the agent." },
+      { t: "Least privilege", d: "Scope credentials per task, default to read-only, and give the agent its own identity instead of borrowing the user's. Sandbox execution: containers, allowlisted egress, no ambient authority." },
+      { t: "Human-in-the-loop", d: "Approval gates on irreversible or costly actions: sends, deletes, payments, deploys. Checkpoints and rollback let you widen autonomy incrementally as trust accumulates." },
+      { t: "Runtime guardrails", d: "Budget caps on tokens, turns, and wall-clock time. Output filters. Tools allowlisted per state. A kill switch that works. When something is ambiguous, fail closed." }
+    ],
+    takeaway: "Design for the day a tool result turns hostile, because eventually one will."
+  },
+  {
+    id: "frameworks", num: "09", tag: "Tooling", title: "Frameworks & ecosystem",
+    intro: "The framework layer is converging on the same core: a loop, tools, and state. Pick the thinnest layer that gives you tracing, persistence, and portability.",
+    concepts: [
+      { t: "The landscape", d: "LangGraph models agents as explicit state graphs. Google's ADK is code-first multi-agent with a managed deploy path. CrewAI organizes role-based crews. OpenAI's Agents SDK centers lightweight handoffs. Anthropic's Agent SDK ships the loop with tools as a library. Different APIs, same skeleton." },
+      { t: "Build vs framework", d: "Frameworks accelerate the start and standardize tracing and state, but they hide prompts behind abstractions that complicate debugging. A common path: prototype on a framework, then own the loop directly once requirements harden." },
+      { t: "The protocol layer", d: "MCP for model-to-tool, A2A for agent-to-agent. Designing around protocols instead of vendor APIs keeps components swappable as the stack shifts under you." },
+      { t: "Prompts as assets", d: "System prompts, tool definitions, eval sets, and skills are versioned engineering artifacts. Code-review them, test them, and ship them through the same pipeline as code." }
+    ],
+    takeaway: "Frameworks are scaffolding. The prompts, tools, and evals are the building."
+  }
+];
+
+var CARDS = [
+  { term: "Agent", def: "An LLM that directs its own process: choosing steps, calling tools, and iterating on feedback until the goal is met." },
+  { term: "Workflow", def: "LLM calls and tools orchestrated through predefined code paths; the developer owns control flow." },
+  { term: "Augmented LLM", def: "The base building block: a model extended with retrieval, tools, and memory." },
+  { term: "Agentic loop", def: "Gather context, reason, act through a tool, observe the result, repeat until done." },
+  { term: "ReAct", def: "A pattern interleaving reasoning traces with actions, so each step is grounded in what was actually observed." },
+  { term: "ACI", def: "Agent-computer interface: the tool names, schemas, descriptions, and error messages an agent works through. Deserves the same care as a human UI." },
+  { term: "MCP", def: "Model Context Protocol: an open standard connecting AI clients to tool and context servers, collapsing N-by-M integrations." },
+  { term: "A2A", def: "Agent2Agent: an emerging protocol for discovery and exchange between agents across vendors and frameworks." },
+  { term: "Context engineering", def: "Curating what occupies the model's context window at each step of the loop." },
+  { term: "Compaction", def: "Summarizing older turns to reclaim context budget while keeping recent turns verbatim." },
+  { term: "Context rot", def: "Degraded recall and reasoning as the context window fills." },
+  { term: "Context poisoning", def: "A bad tool result or hallucination entering context and contaminating later steps." },
+  { term: "RAG", def: "Retrieval-augmented generation: fetching relevant external data into context at query time instead of preloading it." },
+  { term: "Routing", def: "Classifying an input and dispatching it to a specialized prompt, model, or handler." },
+  { term: "Orchestrator–workers", def: "A lead model decomposes a task at runtime, delegates subtasks to workers, and synthesizes the results." },
+  { term: "Evaluator–optimizer", def: "A generate-and-critique loop that iterates until output clears an articulated quality bar." },
+  { term: "Trajectory eval", def: "Grading the steps an agent took, like tool choice, efficiency, and recovery, not just the end state." },
+  { term: "LLM-as-judge", def: "Using a model with a rubric to grade outputs at scale, calibrated against human labels." },
+  { term: "Prompt injection", def: "Adversarial instructions hidden in content the agent reads, aimed at hijacking its actions." },
+  { term: "Least privilege", def: "Granting an agent the minimum credentials and scopes its current task requires, read-only by default." },
+  { term: "Human-in-the-loop", def: "Approval gates on irreversible or costly actions before the agent proceeds." },
+  { term: "Checkpointing", def: "Persisting agent state so runs can pause, resume, roll back, or survive restarts." }
+];
+
+var QUIZ = [
+  { m: 0, q: "In practice, what separates an agent from a workflow?", opts: ["The model decides control flow at runtime", "Agents use more than one model", "Agents always run in parallel", "Workflows can't call tools"], a: 0, why: "Both use tools and loops. The dividing line is who owns the next-step decision: your code (workflow) or the model (agent)." },
+  { m: 0, q: "What is the order of the core agentic loop?", opts: ["Retrieve, embed, rank, answer", "Gather context, reason, act, observe", "Plan, act, act, act", "Act, summarize, exit"], a: 1, why: "The observation feeding back into context is what closes the loop and makes the system agentic." },
+  { m: 1, q: "An agent keeps misusing a search tool. Where do you look first?", opts: ["Model size", "Sampling temperature", "The tool's description and schema", "Adding a second agent"], a: 2, why: "Tool definitions are prompts. Ambiguous descriptions and schemas cause most misuse, and they're the cheapest thing to fix." },
+  { m: 1, q: "MCP primarily solves which problem?", opts: ["GPU scheduling", "Vector similarity search", "Model fine-tuning", "The N-by-M problem of wiring clients to tools"], a: 3, why: "One open contract between clients and servers replaces a custom integration per model-tool pair." },
+  { m: 2, q: "ReAct interleaves what?", opts: ["Reasoning and acting", "Retrieval and ranking", "Two models debating", "Training and inference"], a: 0, why: "Thought, action, observation, repeated. Each reasoning step grounds the next action in real observations." },
+  { m: 2, q: "The classic failure mode of plan-then-execute is:", opts: ["It can't use tools", "Following a stale plan after reality diverges", "It requires fine-tuning", "It only works with small models"], a: 1, why: "Plans help on long horizons but must be revisited when observations contradict them." },
+  { m: 3, q: "Context rot refers to:", opts: ["Model weights decaying over time", "Tokens expiring from a cache", "Performance degrading as the window fills", "Stale vector embeddings"], a: 2, why: "As context grows, recall and reasoning quality drop, which is why curation and compaction matter." },
+  { m: 3, q: "Which is a sound compaction strategy?", opts: ["Delete the system prompt first", "Drop all tool results", "Truncate randomly from the middle", "Summarize old turns, keep recent ones verbatim"], a: 3, why: "The agent keeps the arc of the run in summary form and full fidelity where it matters most: recent steps." },
+  { m: 4, q: "Orchestrator–workers beats routing when:", opts: ["Subtasks can't be predicted in advance", "Inputs fall into known categories", "You need the lowest latency", "Only one model is available"], a: 0, why: "Routing dispatches among known handlers. Orchestrator–workers decomposes the task itself at runtime." },
+  { m: 4, q: "Evaluator–optimizer works best when:", opts: ["The task has no quality criteria", "You can articulate what better means", "Latency is the top constraint", "The generator can't be re-prompted"], a: 1, why: "The loop converges only if the critic can express clear, checkable feedback." },
+  { m: 5, q: "A strong reason to go multi-agent:", opts: ["It always runs faster", "It reduces total token spend", "Work exceeds one context window or parallel exploration helps", "Single agents can't call tools"], a: 2, why: "Separate contexts buy scale and isolation. Speed and cost usually get worse, not better." },
+  { m: 5, q: "The predictable tax of multi-agent systems:", opts: ["Token multiplication and compounding errors", "Loss of tool access", "Smaller context windows", "Lower model quality"], a: 0, why: "Each agent re-reads context, and errors cross boundaries. That's the distributed-systems bill." },
+  { m: 6, q: "Outcome evals versus trajectory evals:", opts: ["Offline versus online", "End state versus the quality of steps taken", "Human versus automated", "Unit versus integration"], a: 1, why: "Outcomes tell you whether it worked. Trajectories tell you why, step by step." },
+  { m: 6, q: "A known risk with LLM-as-judge:", opts: ["It can't output JSON", "It only rates code", "It requires fine-tuning", "Position and verbosity bias"], a: 3, why: "Judges favor certain answer positions and longer outputs, so calibrate against human labels." },
+  { m: 7, q: "The first principle against prompt injection:", opts: ["Treat observed content as data, not instructions", "Use bigger context windows", "Lower the temperature", "Add more agents"], a: 0, why: "Instructions come from the user. Everything the agent reads through tools is untrusted data." },
+  { m: 7, q: "Least privilege for an agent means:", opts: ["One shared god-mode service account", "Minimal, task-scoped, read-only-by-default access", "Borrowing the user's full session", "Disabling all tools"], a: 1, why: "Scope credentials to the task at hand so a hijacked or confused agent has a small blast radius." },
+  { m: 8, q: "The common framework trade-off:", opts: ["Frameworks remove the need for evals", "Frameworks prevent tracing", "Faster start versus hidden prompts and harder debugging", "Frameworks support only one model"], a: 2, why: "Abstractions speed you up early and obscure exactly the things you need to see when it breaks." },
+  { m: 8, q: "Why design around MCP and A2A rather than vendor APIs?", opts: ["They run faster at inference", "Components stay swappable as the stack shifts", "They eliminate authentication", "They compress tokens"], a: 1, why: "Protocols are the stable seams. Models, tools, and frameworks behind them can change without rewrites." }
+];
+
+/* ---------------------------- helpers ----------------------------- */
+
+function shuffle(arr) {
+  var a = arr.slice();
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+  }
+  return a;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function range(n) {
+  var out = [];
+  for (var i = 0; i < n; i++) out.push(i);
+  return out;
+}
+
+var REDUCED = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ------------------------------ state ----------------------------- */
+
+var state = {
+  tab: "study",
+  moduleIdx: 0,
+  completed: {},            // id -> true
+  openConcepts: { 0: true }, // index -> true
+  cardOrder: shuffle(range(CARDS.length)),
+  cardIdx: 0,
+  flipped: false,
+  quizPhase: "setup",
+  quizScope: "all",
+  runQs: [],
+  quizCur: 0,
+  picked: null,
+  answers: []
+};
+
+function completedCount() {
+  var n = 0;
+  for (var i = 0; i < MODULES.length; i++) if (state.completed[MODULES[i].id]) n++;
+  return n;
+}
+
+/* ---------------------------- templates --------------------------- */
+
+function loopDiagram() {
+  return '' +
+  '<div class="panel diagwrap mb20">' +
+    '<div class="eyebrow mb12">Fig. 1 — the loop every agent runs</div>' +
+    '<svg viewBox="0 0 680 210" class="loopsvg" role="img" aria-label="The agentic loop: gather context, reason, act via tool call, observe, feed the result back">' +
+      '<defs>' +
+        '<marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/></marker>' +
+        '<marker id="arrAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#0E7490"/></marker>' +
+      '</defs>' +
+      '<g class="loopbox"><rect x="16" y="72" width="128" height="56" rx="2"/><text x="80" y="96" text-anchor="middle">GATHER</text><text x="80" y="112" text-anchor="middle">CONTEXT</text></g>' +
+      '<g class="loopbox"><rect x="196" y="72" width="112" height="56" rx="2"/><text x="252" y="104" text-anchor="middle">REASON</text></g>' +
+      '<g class="loopbox"><rect x="360" y="72" width="136" height="56" rx="2"/><text x="428" y="96" text-anchor="middle">ACT</text><text x="428" y="112" text-anchor="middle">TOOL CALL</text></g>' +
+      '<g class="loopbox"><rect x="548" y="72" width="116" height="56" rx="2"/><text x="606" y="104" text-anchor="middle">OBSERVE</text></g>' +
+      '<g class="looparrow"><line x1="144" y1="100" x2="188" y2="100" marker-end="url(#arr)"/><line x1="308" y1="100" x2="352" y2="100" marker-end="url(#arr)"/><line x1="496" y1="100" x2="540" y2="100" marker-end="url(#arr)"/></g>' +
+      '<g class="looparrow accent"><path d="M 606 128 L 606 176 L 252 176 L 252 136" fill="none" marker-end="url(#arrAccent)"/><text x="429" y="168" text-anchor="middle" class="looplabel">RESULT RE-ENTERS CONTEXT</text></g>' +
+      '<g class="looparrow dashed"><path d="M 252 72 L 252 30 L 330 30" fill="none" marker-end="url(#arr)"/><text x="342" y="34" class="looplabel ink">GOAL MET → RESPOND</text></g>' +
+    '</svg>' +
+  '</div>';
+}
+
+function renderHeader() {
+  var done = completedCount();
+  var pct = Math.round((done / MODULES.length) * 100);
+  var tabs = [["study", "Study"], ["cards", "Flashcards"], ["quiz", "Quiz"]];
+  var tabHtml = tabs.map(function (t) {
+    return '<button role="tab" aria-selected="' + (state.tab === t[0]) + '" class="tab' + (state.tab === t[0] ? " on" : "") + '" data-a="tab" data-v="' + t[0] + '">' + t[1] + "</button>";
+  }).join("");
+  return '' +
+  '<header class="masthead"><div class="mastinner">' +
+    '<div class="mastrow">' +
+      '<div><h1 class="display doctitle">Agentic AI Engineering<span class="dot">.</span></h1>' +
+      '<div class="docmeta">FIELD GUIDE · REV 2026.08 · 9 MODULES · SELF-PACED</div></div>' +
+      '<div class="loopbadge" aria-hidden="true"><span class="loopdot"></span><span class="loopseg on">REASON</span><span class="loopseg">ACT</span><span class="loopseg">OBSERVE</span></div>' +
+    '</div>' +
+    '<div class="meterrow"><span class="meterlabel">MODULES CLEARED</span><span class="meterlabel">' + done + " / " + MODULES.length + (done === MODULES.length ? " · ALL CLEAR" : "") + "</span></div>" +
+    '<div class="metertrack" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100" aria-label="Study progress"><div class="meterfill" style="width:' + pct + '%"></div></div>' +
+    '<div class="tabs" role="tablist" aria-label="Guide modes">' + tabHtml + "</div>" +
+  "</div></header>";
+}
+
+function renderStudy() {
+  var mod = MODULES[state.moduleIdx];
+
+  var chips = MODULES.map(function (m, i) {
+    var cls = "chip" + (i === state.moduleIdx ? " on" : "") + (state.completed[m.id] && i !== state.moduleIdx ? " chipdone" : "");
+    return '<button class="' + cls + '" data-a="mod" data-v="' + i + '"><span class="mono">' + m.num + "</span> " + esc(m.title) + "</button>";
+  }).join("");
+
+  var sidebar = MODULES.map(function (m, i) {
+    return '<button class="navrow' + (i === state.moduleIdx ? " on" : "") + '" data-a="mod" data-v="' + i + '"' + (i === state.moduleIdx ? ' aria-current="true"' : "") + ">" +
+      '<span class="checksq' + (state.completed[m.id] ? " done" : "") + '">' + (state.completed[m.id] ? "✓" : "") + "</span>" +
+      '<span class="mono navnum">' + m.num + "</span>" +
+      '<span class="navtitle">' + esc(m.title) + "</span></button>";
+  }).join("");
+
+  var concepts = mod.concepts.map(function (c, i) {
+    var open = !!state.openConcepts[i];
+    return '<div class="concept">' +
+      '<button class="conceptbtn" data-a="concept" data-v="' + i + '" aria-expanded="' + open + '">' +
+        '<span class="mono conceptidx">' + String(i + 1).padStart(2, "0") + "</span>" +
+        '<span class="concepttitle">' + esc(c.t) + "</span>" +
+        '<span class="mono conceptcaret">' + (open ? "−" : "+") + "</span>" +
+      "</button>" +
+      (open ? '<p class="conceptbody">' + esc(c.d) + "</p>" : "") +
+    "</div>";
+  }).join("");
+
+  var isDone = !!state.completed[mod.id];
+  var nextBtn = state.moduleIdx < MODULES.length - 1
+    ? '<button class="btn btn-ghost" data-a="mod" data-v="' + (state.moduleIdx + 1) + '" data-top="1">Next: ' + esc(MODULES[state.moduleIdx + 1].title) + " →</button>"
+    : "";
+
+  return '' +
+  '<div class="modchips">' + chips + "</div>" +
+  '<div class="layout">' +
+    '<aside class="modsidebar"><div class="eyebrow mb12">Modules</div><nav>' + sidebar + "</nav></aside>" +
+    '<section class="content">' +
+      '<div class="eyebrow">Module ' + mod.num + " · " + esc(mod.tag) + "</div>" +
+      '<h2 class="display modtitle">' + esc(mod.title) + "</h2>" +
+      '<p class="intro">' + esc(mod.intro) + "</p>" +
+      (state.moduleIdx === 0 ? loopDiagram() : "") +
+      '<div class="panel mb20">' + concepts + "</div>" +
+      '<div class="fieldnote mb24"><div class="eyebrow mb4">Field note</div><p>' + esc(mod.takeaway) + "</p></div>" +
+      '<div class="btnrow">' +
+        '<button class="btn ' + (isDone ? "btn-ghost" : "btn-primary") + '" data-a="complete">' + (isDone ? "✓ Completed — tap to undo" : "Mark module complete") + "</button>" +
+        nextBtn +
+      "</div>" +
+    "</section>" +
+  "</div>";
+}
+
+function renderCards() {
+  var card = CARDS[state.cardOrder[state.cardIdx]];
+  return '' +
+  '<div class="narrow">' +
+    '<div class="rowbetween mb12"><div class="eyebrow">Vocabulary drill</div><div class="mono counter">' + (state.cardIdx + 1) + " / " + state.cardOrder.length + "</div></div>" +
+    '<div class="fc-scene" data-a="card-flip">' +
+      '<div class="fc' + (state.flipped ? " flipped" : "") + '" id="fc">' +
+        '<div class="fc-face fc-front panel"><div class="eyebrow mb12">Term</div><div class="display fcterm">' + esc(card.term) + '</div><div class="mono fchint">Tap to reveal</div></div>' +
+        '<div class="fc-face fc-back panel"><div class="eyebrow mb12">Definition</div><p class="fcdef">' + esc(card.def) + "</p></div>" +
+      "</div>" +
+    "</div>" +
+    '<div class="btnrow center mt20">' +
+      '<button class="btn btn-ghost" data-a="card-prev">← Prev</button>' +
+      '<button class="btn btn-primary" data-a="card-flip">Flip</button>' +
+      '<button class="btn btn-ghost" data-a="card-next">Next →</button>' +
+      '<button class="btn btn-ghost" data-a="card-shuffle">Shuffle</button>' +
+    "</div>" +
+  "</div>";
+}
+
+function renderQuiz() {
+  if (state.quizPhase === "setup") {
+    var pool = state.quizScope === "all" ? QUIZ : QUIZ.filter(function (q) { return q.m === Number(state.quizScope); });
+    var scopeChips = '<button class="chip' + (state.quizScope === "all" ? " on" : "") + '" data-a="quiz-scope" data-v="all">All modules · ' + QUIZ.length + " questions</button>" +
+      MODULES.map(function (m, i) {
+        return '<button class="chip' + (state.quizScope === String(i) ? " on" : "") + '" data-a="quiz-scope" data-v="' + i + '"><span class="mono">' + m.num + "</span> " + esc(m.title) + "</button>";
+      }).join("");
+    return '' +
+    '<div class="narrow">' +
+      '<div class="eyebrow mb4">Self-test</div>' +
+      '<h2 class="display modtitle">Check what stuck</h2>' +
+      '<p class="intro">Multiple choice, immediate feedback, options shuffled each run. Pick a scope.</p>' +
+      '<div class="scopechips">' + scopeChips + "</div>" +
+      '<button class="btn btn-primary" data-a="quiz-start">Start quiz — ' + pool.length + " question" + (pool.length === 1 ? "" : "s") + "</button>" +
+    "</div>";
+  }
+
+  if (state.quizPhase === "run") {
+    var q = state.runQs[state.quizCur];
+    var opts = q.opts.map(function (opt, i) {
+      var cls = "opt";
+      var dis = "";
+      if (state.picked !== null) {
+        dis = " disabled";
+        if (i === q.a) cls += " opt-correct";
+        else if (i === state.picked) cls += " opt-wrong";
+        else cls += " opt-dim";
+      }
+      return '<button class="' + cls + '" data-a="quiz-pick" data-v="' + i + '"' + dis + '><span class="mono optkey">' + String.fromCharCode(65 + i) + "</span><span>" + esc(opt) + "</span></button>";
+    }).join("");
+
+    var verdict = "";
+    if (state.picked !== null) {
+      var ok = state.picked === q.a;
+      verdict = '<div class="verdict ' + (ok ? "verdict-ok" : "verdict-no") + '">' +
+        '<div class="mono verdicttag">' + (ok ? "CORRECT" : "NOT QUITE") + "</div>" +
+        "<p>" + esc(q.why) + "</p>" +
+        '<button class="btn btn-primary mt20" data-a="quiz-next">' + (state.quizCur + 1 >= state.runQs.length ? "See results" : "Next question") + "</button>" +
+      "</div>";
+    }
+
+    return '' +
+    '<div class="narrow">' +
+      '<div class="rowbetween mb12"><div class="eyebrow">Module ' + MODULES[q.m].num + " · " + esc(MODULES[q.m].title) + '</div><div class="mono counter">' + (state.quizCur + 1) + " / " + state.runQs.length + "</div></div>" +
+      '<h3 class="quizq">' + esc(q.q) + "</h3>" +
+      '<div class="mb12">' + opts + "</div>" +
+      verdict +
+    "</div>";
+  }
+
+  var score = state.answers.filter(function (a) { return a.correct; }).length;
+  var missed = state.answers.filter(function (a) { return !a.correct; });
+  var missHtml = missed.length
+    ? '<div class="panel mb24">' + missed.map(function (m) {
+        return '<div class="missrow"><div class="missq">' + esc(m.q.q) + '</div><div class="missa"><span class="mono">ANSWER</span>' + esc(m.q.opts[m.q.a]) + "</div></div>";
+      }).join("") + "</div>"
+    : "";
+  return '' +
+  '<div class="narrow">' +
+    '<div class="eyebrow mb4">Results</div>' +
+    '<div class="display scoreline">' + score + " / " + state.answers.length + "</div>" +
+    '<p class="intro">' + (score === state.answers.length ? "Clean run. Reshuffle and try again later to make it stick." : "Review the misses below, then revisit those modules in Study.") + "</p>" +
+    missHtml +
+    '<button class="btn btn-primary" data-a="quiz-restart">Run another quiz</button>' +
+  "</div>";
+}
+
+/* ----------------------------- render ----------------------------- */
+
+var app = document.getElementById("app");
+
+function render(scrollTop) {
+  var y = window.scrollY;
+  var body = state.tab === "study" ? renderStudy() : state.tab === "cards" ? renderCards() : renderQuiz();
+  app.innerHTML = renderHeader() + '<main class="main">' + body + "</main>";
+  window.scrollTo(0, scrollTop ? 0 : y);
+}
+
+/* ----------------------------- events ----------------------------- */
+
+app.addEventListener("click", function (e) {
+  var el = e.target.closest("[data-a]");
+  if (!el) return;
+  var a = el.getAttribute("data-a");
+  var v = el.getAttribute("data-v");
+
+  if (a === "tab") {
+    state.tab = v;
+    render(true);
+
+  } else if (a === "mod") {
+    state.moduleIdx = Number(v);
+    state.openConcepts = { 0: true };
+    render(true);
+
+  } else if (a === "concept") {
+    var i = Number(v);
+    if (state.openConcepts[i]) delete state.openConcepts[i];
+    else state.openConcepts[i] = true;
+    render(false);
+
+  } else if (a === "complete") {
+    var id = MODULES[state.moduleIdx].id;
+    if (state.completed[id]) delete state.completed[id];
+    else state.completed[id] = true;
+    render(false);
+
+  } else if (a === "card-flip") {
+    state.flipped = !state.flipped;
+    var fc = document.getElementById("fc");
+    if (fc) fc.classList.toggle("flipped", state.flipped);
+
+  } else if (a === "card-prev" || a === "card-next") {
+    var d = a === "card-next" ? 1 : -1;
+    state.flipped = false;
+    state.cardIdx = (state.cardIdx + d + state.cardOrder.length) % state.cardOrder.length;
+    render(false);
+
+  } else if (a === "card-shuffle") {
+    state.cardOrder = shuffle(range(CARDS.length));
+    state.cardIdx = 0;
+    state.flipped = false;
+    render(false);
+
+  } else if (a === "quiz-scope") {
+    state.quizScope = v;
+    render(false);
+
+  } else if (a === "quiz-start") {
+    var pool = state.quizScope === "all" ? QUIZ : QUIZ.filter(function (q) { return q.m === Number(state.quizScope); });
+    state.runQs = shuffle(pool).map(function (q) {
+      var order = shuffle(range(q.opts.length));
+      return {
+        q: q.q, why: q.why, m: q.m,
+        opts: order.map(function (i) { return q.opts[i]; }),
+        a: order.indexOf(q.a)
+      };
+    });
+    state.quizCur = 0;
+    state.picked = null;
+    state.answers = [];
+    state.quizPhase = "run";
+    render(true);
+
+  } else if (a === "quiz-pick") {
+    if (state.picked !== null) return;
+    state.picked = Number(v);
+    state.answers.push({ correct: state.picked === state.runQs[state.quizCur].a, q: state.runQs[state.quizCur] });
+    render(false);
+
+  } else if (a === "quiz-next") {
+    if (state.quizCur + 1 >= state.runQs.length) {
+      state.quizPhase = "done";
+    } else {
+      state.quizCur += 1;
+      state.picked = null;
+    }
+    render(true);
+
+  } else if (a === "quiz-restart") {
+    state.quizPhase = "setup";
+    render(true);
+  }
+});
+
+/* live loop badge */
+var loopI = 0;
+if (!REDUCED) {
+  setInterval(function () {
+    loopI = (loopI + 1) % 3;
+    var segs = document.querySelectorAll(".loopseg");
+    for (var i = 0; i < segs.length; i++) segs[i].classList.toggle("on", i === loopI);
+  }, 1600);
+}
+
+render(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Direct dependencies only, pinned exactly. Transitive versions come from these.
+# Every addition needs a dated line in docs/decisions.md saying what it replaces and why.
+mlflow==3.16.0
+scikit-learn==1.9.0
+pandas==2.3.3
+pyarrow==25.0.1
+pandera==0.33.1
+numpy==2.5.2
+fastapi==0.141.1
+uvicorn==0.52.4
+pyyaml==6.0.3
+matplotlib==3.11.1
+
+# tests
+pytest==9.1.1
+httpx==0.28.1

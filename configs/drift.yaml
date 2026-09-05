@@ -1,0 +1,9 @@
+# The future batch is carved out at split time and never used for training in Session 1.
+# The shift is real and explainable, not injected noise: fibre-optic customers churn at
+# 41.9 % against 14.5 % for everyone else (measured on the full file, 2026-09-05).
+future_batch:
+  column: InternetService
+  equals: Fiber optic
+
+# Session 3 adds here: per-feature PSI thresholds, the prediction-distribution PSI threshold,
+# and the margin a challenger must beat the champion by on the fixed holdout to be promoted.

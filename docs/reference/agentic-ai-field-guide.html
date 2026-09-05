@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agentic AI — A Builder's Field Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EFF2ED;
+  --panel:#F7F9F5;
+  --ink:#14231B;
+  --ink-soft:#3D5147;
+  --ink-faint:#6B7D72;
+  --line:#CBD5CC;
+  --cobalt:#2B4BDF;
+  --cobalt-soft:#E3E8FC;
+  --spruce:#1F6B4A;
+  --spruce-soft:#DCEAE1;
+  --rust:#A64B1E;
+  --rust-soft:#F3E4D9;
+  --code-bg:#0E1813;
+  --code-ink:#D9E4DC;
+  --code-dim:#7E9488;
+  --code-key:#9DB4F5;
+  --code-str:#8FCBA9;
+  --display:'Bricolage Grotesque','Archivo',system-ui,sans-serif;
+  --body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:84px}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:16px;
+  line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--cobalt);color:#fff}
+
+/* ---------- layout ---------- */
+.frame{max-width:1240px;margin:0 auto;padding:0 24px}
+.shell{display:grid;grid-template-columns:216px minmax(0,1fr);gap:56px;align-items:start}
+main{max-width:860px;min-width:0}
+section{padding:64px 0 8px;border-top:1px solid var(--line)}
+section:first-of-type{border-top:none;padding-top:40px}
+
+/* ---------- left rail ---------- */
+.rail{position:sticky;top:24px;padding-top:40px}
+.rail .rail-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:14px}
+.rail a{
+  display:flex;align-items:baseline;gap:10px;
+  padding:7px 10px;margin:1px -10px;border-radius:7px;
+  color:var(--ink-soft);text-decoration:none;font-size:13.5px;font-weight:500;
+  border-left:2px solid transparent;
+}
+.rail a .n{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);min-width:16px}
+.rail a:hover{background:var(--panel);color:var(--ink)}
+.rail a.active{color:var(--cobalt);border-left-color:var(--cobalt);background:var(--panel)}
+.rail a.active .n{color:var(--cobalt)}
+
+/* mobile chip nav */
+.chipbar{display:none}
+
+/* ---------- type ---------- */
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--cobalt);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:10px;
+}
+.eyebrow::before{content:"";width:22px;height:1.5px;background:var(--cobalt);display:inline-block}
+h1{
+  font-family:var(--display);font-weight:800;
+  font-size:clamp(36px,5.4vw,60px);line-height:1.02;letter-spacing:-.02em;
+  margin-bottom:22px;
+}
+h1 .accent{color:var(--cobalt)}
+h2{
+  font-family:var(--display);font-weight:800;font-size:clamp(25px,3vw,31px);
+  line-height:1.12;letter-spacing:-.015em;margin-bottom:16px;
+}
+h3{font-family:var(--display);font-weight:600;font-size:19px;margin:30px 0 10px}
+p{margin-bottom:14px;color:var(--ink-soft);max-width:68ch}
+p strong,li strong{color:var(--ink);font-weight:600}
+.lede{font-size:18.5px;line-height:1.6;color:var(--ink-soft);max-width:62ch}
+ul.tight{margin:0 0 16px 0;padding-left:0;list-style:none}
+ul.tight li{padding:5px 0 5px 22px;position:relative;color:var(--ink-soft);max-width:68ch}
+ul.tight li::before{content:"";position:absolute;left:2px;top:14px;width:8px;height:2px;background:var(--cobalt)}
+a{color:var(--cobalt)}
+
+/* ---------- hero ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:44px;align-items:center}
+.hero-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.tag{
+  font-family:var(--mono);font-size:11px;letter-spacing:.06em;
+  border:1px solid var(--line);border-radius:100px;padding:5px 12px;color:var(--ink-soft);background:var(--panel);
+}
+.tag.blue{border-color:var(--cobalt);color:var(--cobalt);background:var(--cobalt-soft)}
+
+/* loop diagram (signature) */
+.loop-wrap{position:relative}
+.loop-svg{width:100%;height:auto;display:block}
+.loop-node{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;fill:var(--ink)}
+.loop-sub{font-family:var(--mono);font-size:8.5px;fill:var(--ink-faint);letter-spacing:.04em}
+.orbit-dot{fill:var(--cobalt)}
+@keyframes orbit{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.orbit-group{transform-origin:150px 150px;animation:orbit 14s linear infinite}
+.loop-caption{font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);text-align:center;margin-top:10px;letter-spacing:.08em;text-transform:uppercase}
+
+/* ---------- callout ---------- */
+.callout{
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--cobalt);
+  border-radius:10px;padding:18px 22px;margin:22px 0;max-width:72ch;
+}
+.callout p{margin:0;font-size:15px}
+.callout .co-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cobalt);font-weight:600;display:block;margin-bottom:6px}
+.callout.warn{border-left-color:var(--rust)}
+.callout.warn .co-label{color:var(--rust)}
+
+/* ---------- autonomy spectrum ---------- */
+.spectrum{margin:30px 0 10px}
+.spec-track{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;position:relative}
+.spec-step{
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 15px 14px;
+  position:relative;
+}
+.spec-step .lvl{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink-faint);text-transform:uppercase;display:block;margin-bottom:8px}
+.spec-step h4{font-family:var(--display);font-weight:600;font-size:15px;margin-bottom:6px}
+.spec-step p{font-size:13px;line-height:1.5;margin:0;color:var(--ink-soft)}
+.spec-step .dotline{display:flex;gap:4px;margin-bottom:12px}
+.spec-step .dotline i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--cobalt);display:block}
+.spec-step .dotline i.on{background:var(--cobalt)}
+.spec-legend{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);letter-spacing:.1em;text-transform:uppercase;margin-top:10px}
+
+/* ---------- step mapper table ---------- */
+table{width:100%;border-collapse:collapse;margin:18px 0 24px;font-size:14px}
+th{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-faint);text-align:left;padding:10px 14px;border-bottom:2px solid var(--ink);font-weight:600;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--line);color:var(--ink-soft);vertical-align:top}
+td:first-child{color:var(--ink);font-weight:500}
+tr.hot td{background:var(--cobalt-soft)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* ---------- pattern cards ---------- */
+.pattern-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.pcard{
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  transition:border-color .15s;
+}
+.pcard.open{border-color:var(--ink);grid-column:1/-1}
+.pcard-head{
+  display:flex;align-items:center;gap:14px;width:100%;text-align:left;
+  padding:20px 22px;background:none;border:none;cursor:pointer;font-family:var(--body);
+}
+.pcard-head:hover{background:rgba(0,0,0,.025)}
+.pglyph{flex:none;width:44px;height:44px;border-radius:10px;display:grid;place-items:center;background:var(--spruce-soft)}
+.pglyph svg{width:24px;height:24px;stroke:var(--spruce);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pcard-head .pt{flex:1}
+.pcard-head .pt b{font-family:var(--display);font-weight:600;font-size:17.5px;display:block;color:var(--ink)}
+.pcard-head .pt span{font-size:13px;color:var(--ink-faint)}
+.pcard-head .chev{flex:none;font-family:var(--mono);font-size:13px;color:var(--ink-faint);transition:transform .2s}
+.pcard.open .chev{transform:rotate(90deg);color:var(--cobalt)}
+.pcard-body{display:none;padding:0 22px 22px}
+.pcard.open .pcard-body{display:block}
+.ptabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap}
+.ptabs button{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;background:none;border:none;
+  padding:9px 12px;cursor:pointer;color:var(--ink-faint);border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+.ptabs button:hover{color:var(--ink)}
+.ptabs button.active{color:var(--cobalt);border-bottom-color:var(--cobalt);font-weight:600}
+.ppanel{display:none}
+.ppanel.active{display:block}
+.ppanel p,.ppanel li{font-size:14.5px}
+
+/* ---------- code ---------- */
+.codeblock{position:relative;margin:16px 0 20px;border-radius:12px;overflow:hidden;border:1px solid #223229}
+.codeblock .code-top{
+  display:flex;justify-content:space-between;align-items:center;
+  background:#132019;padding:8px 14px;border-bottom:1px solid #223229;
+}
+.codeblock .code-top span{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--code-dim)}
+.copybtn{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--code-ink);
+  background:none;border:1px solid #33473C;border-radius:6px;padding:4px 10px;cursor:pointer;
+}
+.copybtn:hover{border-color:var(--code-ink)}
+pre{
+  background:var(--code-bg);color:var(--code-ink);font-family:var(--mono);
+  font-size:12.8px;line-height:1.66;padding:16px 18px;overflow-x:auto;tab-size:4;
+}
+pre .c{color:var(--code-dim)}
+pre .k{color:var(--code-key)}
+pre .s{color:var(--code-str)}
+
+/* ---------- build loop steps ---------- */
+.loopsteps{counter-reset:ls;margin-top:26px}
+.lstep{
+  display:grid;grid-template-columns:52px minmax(0,1fr);gap:18px;
+  padding:22px 0;border-bottom:1px dashed var(--line);
+}
+.lstep:last-child{border-bottom:none}
+.lstep .ln{
+  counter-increment:ls;font-family:var(--display);font-weight:800;font-size:26px;color:var(--cobalt);
+}
+.lstep .ln::before{content:"0" counter(ls)}
+.lstep h3{margin:2px 0 8px}
+.lstep p,.lstep li{font-size:14.5px}
+.lstep ul.tight li{padding-top:3px;padding-bottom:3px}
+
+/* ---------- picker ---------- */
+.picker{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;margin-top:24px}
+.pq{margin-bottom:20px}
+.pq .q{font-weight:600;font-size:14.5px;margin-bottom:9px;color:var(--ink)}
+.pq .opts{display:flex;gap:8px;flex-wrap:wrap}
+.pq .opts label{
+  font-family:var(--mono);font-size:12px;border:1px solid var(--line);border-radius:100px;
+  padding:7px 15px;cursor:pointer;color:var(--ink-soft);background:var(--paper);user-select:none;
+}
+.pq .opts input{position:absolute;opacity:0;pointer-events:none}
+.pq .opts label:has(input:checked){background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pq .opts label:has(input:focus-visible){outline:2px solid var(--cobalt);outline-offset:2px}
+.verdict{
+  border-top:2px solid var(--ink);margin-top:6px;padding-top:18px;
+}
+.verdict .v-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--cobalt);font-weight:600;margin-bottom:10px}
+.verdict-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.vchip{font-family:var(--mono);font-size:12px;padding:6px 13px;border-radius:100px;background:var(--cobalt);color:#fff}
+.vchip.dim{background:var(--paper);color:var(--ink-faint);border:1px dashed var(--line)}
+.verdict p{font-size:14px;margin:0}
+
+/* ---------- checklist ---------- */
+.check-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:24px;flex-wrap:wrap}
+.progress-pill{
+  font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink);
+  border:1px solid var(--line);background:var(--panel);border-radius:100px;padding:7px 16px;
+}
+.progress-pill b{color:var(--cobalt)}
+.checklist{margin-top:14px}
+.checklist label{
+  display:flex;gap:14px;align-items:flex-start;padding:13px 14px;border-radius:10px;cursor:pointer;
+  border:1px solid transparent;
+}
+.checklist label:hover{background:var(--panel)}
+.checklist input{
+  appearance:none;flex:none;width:20px;height:20px;margin-top:2px;border:1.6px solid var(--ink-faint);
+  border-radius:6px;cursor:pointer;display:grid;place-items:center;background:var(--paper);
+}
+.checklist input:checked{background:var(--cobalt);border-color:var(--cobalt)}
+.checklist input:checked::after{content:"✓";color:#fff;font-size:13px;font-weight:700}
+.checklist input:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px}
+.checklist .ct{font-size:14.5px;color:var(--ink-soft)}
+.checklist .ct b{color:var(--ink);font-weight:600}
+.checklist label:has(input:checked) .ct{color:var(--ink-faint)}
+.checklist label:has(input:checked) .ct b{color:var(--ink-faint)}
+
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line);margin-top:70px;padding:28px 0 48px}
+footer p{font-size:13px;color:var(--ink-faint);max-width:none}
+
+/* ---------- focus + motion ---------- */
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .orbit-group{animation:none}
+  *{transition:none!important}
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1020px){
+  .shell{display:block}
+  .rail{display:none}
+  .chipbar{
+    display:flex;gap:8px;overflow-x:auto;position:sticky;top:0;z-index:40;
+    background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(8px);
+    padding:12px 24px;margin:0 -24px;border-bottom:1px solid var(--line);
+    -webkit-overflow-scrolling:touch;scrollbar-width:none;
+  }
+  .chipbar::-webkit-scrollbar{display:none}
+  .chipbar a{
+    flex:none;font-family:var(--mono);font-size:12px;text-decoration:none;color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:100px;padding:6px 14px;background:var(--panel);
+  }
+  .chipbar a.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+}
+@media (max-width:860px){
+  .hero{grid-template-columns:1fr}
+  .loop-wrap{max-width:280px;margin:0 auto}
+  .pattern-grid{grid-template-columns:1fr}
+  .spec-track{grid-template-columns:1fr 1fr}
+  section{padding:48px 0 8px}
+}
+@media (max-width:560px){
+  .spec-track{grid-template-columns:1fr}
+  .lstep{grid-template-columns:40px 1fr;gap:12px}
+  .frame{padding:0 18px}
+  .chipbar{padding:12px 18px;margin:0 -18px}
+}
+</style>
+</head>
+<body>
+<div class="frame">
+<nav class="chipbar" aria-label="Sections">
+  <a href="#core">Core idea</a>
+  <a href="#decompose">Decompose</a>
+  <a href="#patterns">Patterns</a>
+  <a href="#loop">Build loop</a>
+  <a href="#errors">Error analysis</a>
+  <a href="#optimize">Optimize</a>
+  <a href="#picker">Picker</a>
+  <a href="#checklist">Checklist</a>
+</nav>
+
+<div class="shell">
+<nav class="rail" aria-label="Sections">
+  <div class="rail-label">Field guide</div>
+  <a href="#core"><span class="n">01</span>The core idea</a>
+  <a href="#decompose"><span class="n">02</span>Decompose the task</a>
+  <a href="#patterns"><span class="n">03</span>Four design patterns</a>
+  <a href="#loop"><span class="n">04</span>The build loop</a>
+  <a href="#errors"><span class="n">05</span>Error analysis</a>
+  <a href="#optimize"><span class="n">06</span>Latency &amp; cost</a>
+  <a href="#picker"><span class="n">07</span>Pattern picker</a>
+  <a href="#checklist"><span class="n">08</span>Pre-flight checklist</a>
+</nav>
+
+<main>
+<!-- ============ HERO / 01 CORE IDEA ============ -->
+<section id="core">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Agentic AI · Builder's field guide</div>
+      <h1>Ship agents by iterating <span class="accent">the workflow</span>, not the prompt.</h1>
+      <p class="lede">A working reference distilled from Andrew Ng's <em>Agentic AI</em> course (DeepLearning.AI): the four design patterns, the eval-driven development loop, and the engineering discipline that separates demos from production systems.</p>
+      <div class="hero-meta">
+        <span class="tag blue">Reflection</span>
+        <span class="tag blue">Tool use</span>
+        <span class="tag blue">Planning</span>
+        <span class="tag blue">Multi-agent</span>
+        <span class="tag">Evals &amp; error analysis</span>
+      </div>
+    </div>
+    <div class="loop-wrap" aria-hidden="true">
+      <svg class="loop-svg" viewBox="0 0 300 300">
+        <circle cx="150" cy="150" r="92" fill="none" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="3 6"/>
+        <g class="orbit-group"><circle class="orbit-dot" cx="150" cy="58" r="5"/></g>
+        <g>
+          <circle cx="150" cy="58" r="26" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4"/>
+          <text x="150" y="62" text-anchor="middle" class="loop-node">BUILD</text>
+          <circle cx="242" cy="150" r="26" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4"/>
+          <text x="242" y="154" text-anchor="middle" class="loop-node">TRACE</text>
+          <circle cx="150" cy="242" r="26" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4"/>
+          <text x="150" y="246" text-anchor="middle" class="loop-node">EVAL</text>
+          <circle cx="58" cy="150" r="26" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.4"/>
+          <text x="58" y="154" text-anchor="middle" class="loop-node">FIX</text>
+        </g>
+        <text x="150" y="146" text-anchor="middle" class="loop-sub">THE DISCIPLINED</text>
+        <text x="150" y="160" text-anchor="middle" class="loop-sub">ITERATION LOOP</text>
+      </svg>
+      <div class="loop-caption">repeat until evals pass</div>
+    </div>
+  </div>
+
+  <h3>What "agentic" actually means</h3>
+  <p>An agentic workflow uses an LLM to carry out <strong>some or all of the steps</strong> in a multi-step task — drafting, checking, calling tools, revising — instead of producing one answer in a single pass. It's the difference between typing an essay start-to-finish with no backspace and writing the way a person does: outline, draft, research a gap, revise.</p>
+  <p><strong>"Agentic" is a spectrum, not a binary.</strong> Arguing over whether something is "a true agent" is wasted energy; the useful question is how much autonomy the task needs. More autonomy means more flexibility — and less predictability, harder debugging, harder evals.</p>
+
+  <div class="spectrum">
+    <div class="spec-track">
+      <div class="spec-step">
+        <div class="dotline"><i class="on"></i><i></i><i></i><i></i></div>
+        <span class="lvl">Level 1</span>
+        <h4>Single call</h4>
+        <p>One prompt, one answer. No agency — your baseline to beat.</p>
+      </div>
+      <div class="spec-step">
+        <div class="dotline"><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <span class="lvl">Level 2</span>
+        <h4>Fixed workflow</h4>
+        <p>You hard-code the step sequence; the LLM executes individual steps. Predictable, testable.</p>
+      </div>
+      <div class="spec-step">
+        <div class="dotline"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+        <span class="lvl">Level 3</span>
+        <h4>Model picks the path</h4>
+        <p>The LLM decides which tool or branch to use next, within bounds you set.</p>
+      </div>
+      <div class="spec-step">
+        <div class="dotline"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+        <span class="lvl">Level 4</span>
+        <h4>Model plans the steps</h4>
+        <p>The LLM decomposes the goal itself and loops until done. Powerful, least predictable.</p>
+      </div>
+    </div>
+    <div class="spec-legend"><span>More predictable</span><span>More autonomous</span></div>
+  </div>
+
+  <div class="callout">
+    <span class="co-label">Rule of thumb</span>
+    <p>Choose the <strong>lowest level of autonomy that passes your evals.</strong> Most business workflows that look "agentic" ship as Level 2–3. Reserve Level 4 for tasks where the steps genuinely can't be known in advance.</p>
+  </div>
+
+  <p>Why bother? Iteration compounds quality: a mid-tier model wrapped in a good agentic loop can outperform a frontier model prompted zero-shot — a result Ng has shown repeatedly on coding benchmarks. The workflow design, not the model choice, is usually the bigger lever. It also unlocks tasks a single call simply cannot do: anything requiring live data, actions in external systems, or work that exceeds one context window.</p>
+</section>
+
+<!-- ============ 02 DECOMPOSE ============ -->
+<section id="decompose">
+  <div class="eyebrow">Step 02</div>
+  <h2>Decompose the task before you touch a framework</h2>
+  <p class="lede">Every agentic system starts the same way: watch how a skilled human does the job, and write down the steps.</p>
+  <ul class="tight">
+    <li><strong>List the human steps.</strong> Concrete verbs, in order. "Read the invoice → check it against the PO → flag mismatches → draft the reply."</li>
+    <li><strong>Assign an executor to each step:</strong> an LLM prompt, deterministic code, a tool call (API, database, search), retrieval, or a human checkpoint. Not everything should be an LLM call — code is free, exact, and testable.</li>
+    <li><strong>Name each step's input and output.</strong> Explicit interfaces are what make component-level evals possible later.</li>
+    <li><strong>Mark the risky steps.</strong> Where would a human double-check their work? Those steps are your first candidates for reflection and evals.</li>
+  </ul>
+
+  <h3>Worked example — "answer an inbound RFP"</h3>
+  <table>
+    <thead><tr><th>Step</th><th>Executor</th><th>Input → output</th></tr></thead>
+    <tbody>
+      <tr><td>Extract requirements</td><td>LLM</td><td>RFP PDF → structured requirement list</td></tr>
+      <tr><td>Retrieve product docs</td><td>Tool (search / RAG)</td><td>Requirements → relevant doc chunks</td></tr>
+      <tr><td>Draft each section</td><td>LLM (per requirement)</td><td>Requirement + docs → draft section</td></tr>
+      <tr class="hot"><td>Check draft vs. requirements</td><td>LLM critic + rules</td><td>Draft → issue list <span class="num">(risky — add reflection)</span></td></tr>
+      <tr><td>Assemble &amp; format</td><td>Code</td><td>Sections → final document</td></tr>
+    </tbody>
+  </table>
+  <p>Once the table exists, the architecture is nearly decided: each row becomes a component, risky rows get the reflection pattern, tool rows get the tool-use pattern, and the whole thing starts as a Level-2 fixed workflow — upgrade autonomy only if evals demand it.</p>
+</section>
+<!-- ============ 03 PATTERNS ============ -->
+<section id="patterns">
+  <div class="eyebrow">Step 03</div>
+  <h2>The four design patterns</h2>
+  <p class="lede">Build each from first principles before reaching for a framework — the course does, and it's the fastest way to understand what any framework is doing for you. Patterns compose: most real systems use two or three.</p>
+
+  <div class="pattern-grid">
+
+    <!-- REFLECTION -->
+    <article class="pcard" id="p-reflection">
+      <button class="pcard-head" aria-expanded="false">
+        <span class="pglyph"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3v5h-5"/></svg></span>
+        <span class="pt"><b>Reflection</b><span>Generate → critique → revise. Automated code review for everything.</span></span>
+        <span class="chev">▶</span>
+      </button>
+      <div class="pcard-body">
+        <div class="ptabs" role="tablist">
+          <button class="active">Use when</button><button>How it works</button><button>Skeleton</button><button>Pitfalls</button>
+        </div>
+        <div class="ppanel active">
+          <ul class="tight">
+            <li>Output quality matters more than latency, and you can afford 2–3× the tokens.</li>
+            <li>The output is <strong>checkable</strong> — code that runs, SQL that executes, JSON that validates, charts that render, claims with sources.</li>
+            <li>First-pass quality is inconsistent but the model can recognize its own errors when asked to look.</li>
+          </ul>
+          <p>Typical wins from the course: chart-generation and SQL-generation workflows, where a reflection pass measurably lifts accuracy over direct generation.</p>
+        </div>
+        <div class="ppanel">
+          <p>A second LLM pass (often a different prompt playing "reviewer") critiques the draft against the task; a third pass revises. One to two rounds captures most of the gain — returns diminish fast after that.</p>
+          <p><strong>The big lever is external feedback.</strong> Pure self-critique recycles the model's own beliefs. Feeding in objective signals — unit test results, a linter, the SQL error message, the rendered image — gives the critic new information and dramatically improves the loop. Prefer <em>generate → run it → critique with results → revise</em> whenever the output is executable.</p>
+        </div>
+        <div class="ppanel">
+          <div class="codeblock">
+            <div class="code-top"><span>reflection.py</span><button class="copybtn">Copy</button></div>
+<pre>def reflect_loop(task, max_rounds=2):
+    draft = llm(f"Complete this task:\n{task}")
+    for _ in range(max_rounds):
+        checks = run_checks(draft)   <span class="c"># external signal: tests, linter, SQL EXPLAIN</span>
+        critique = llm(
+            "You are a strict reviewer. Critique the draft against the task "
+            "and the check results. List concrete problems. "
+            f"Reply APPROVED if there are none.\n\nTask: {task}\n"
+            f"Draft: {draft}\nCheck results: {checks}"
+        )
+        if "APPROVED" in critique:
+            break
+        draft = llm(
+            f"Revise the draft to fix every problem listed.\n"
+            f"Task: {task}\nDraft: {draft}\nProblems: {critique}"
+        )
+    return draft</pre>
+          </div>
+        </div>
+        <div class="ppanel">
+          <ul class="tight">
+            <li>A vague critic ("make it better") produces vague revisions — give the reviewer a rubric or checklist.</li>
+            <li>Self-critique with no new information can confidently approve wrong answers; add an external check wherever one exists.</li>
+            <li>Unbounded loops burn money — cap rounds, and stop early on APPROVED.</li>
+            <li>Don't reflect on everything. Apply it to the steps your error analysis flags, not the whole pipeline.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- TOOL USE -->
+    <article class="pcard" id="p-tools">
+      <button class="pcard-head" aria-expanded="false">
+        <span class="pglyph"><svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-2.4 2.6-2.6z"/></svg></span>
+        <span class="pt"><b>Tool use</b><span>Let the model act — APIs, databases, search, code execution, MCP.</span></span>
+        <span class="chev">▶</span>
+      </button>
+      <div class="pcard-body">
+        <div class="ptabs" role="tablist">
+          <button class="active">Use when</button><button>How it works</button><button>Skeleton</button><button>Pitfalls</button>
+        </div>
+        <div class="ppanel active">
+          <ul class="tight">
+            <li>The task needs information the model doesn't have — live data, private systems, precise math.</li>
+            <li>The task needs <strong>actions</strong>, not just text: send, book, update, query.</li>
+            <li>You want deterministic sub-steps (calculations, lookups) done exactly rather than approximated in prose.</li>
+          </ul>
+        </div>
+        <div class="ppanel">
+          <p>You describe functions to the model (name, description, typed parameters). The model doesn't execute anything — it replies with a structured request; <strong>your code executes it</strong> and feeds the result back, looping until the model answers.</p>
+          <p><strong>The description is the interface.</strong> Write it for the model, not for humans: what the tool does, when to use it, when <em>not</em> to, and what the arguments mean. Most tool-selection failures are documentation failures.</p>
+          <p>Two force multipliers: <strong>code execution</strong> — a sandboxed interpreter is the universal tool for math, data wrangling and file work, and often replaces a dozen bespoke tools; and <strong>MCP</strong> (Model Context Protocol) — an open standard that lets you plug in servers exposing tools and data instead of hand-wiring every integration, so the ecosystem's connectors become yours.</p>
+        </div>
+        <div class="ppanel">
+          <div class="codeblock">
+            <div class="code-top"><span>tool_loop.py</span><button class="copybtn">Copy</button></div>
+<pre>TOOLS = [{
+    "name": "get_invoice",
+    "description": (
+        "Look up one invoice by its exact ID. Use when the user references "
+        "a specific invoice number. NOT for date ranges or totals."
+    ),
+    "parameters": {"invoice_id": "string"},
+}]
+
+def agent(user_msg, max_turns=8):
+    messages = [{"role": "user", "content": user_msg}]
+    for _ in range(max_turns):
+        reply = llm(messages, tools=TOOLS)     <span class="c"># model answers or requests a tool</span>
+        if not reply.tool_call:
+            return reply.text
+        result = execute(reply.tool_call)      <span class="c"># your code runs it — sandboxed, validated</span>
+        messages += [reply, tool_result(result)]  <span class="c"># errors go back too; let it retry</span>
+    return "Stopped: turn limit reached."</pre>
+          </div>
+        </div>
+        <div class="ppanel">
+          <ul class="tight">
+            <li>Many overlapping tools confuse selection — fewer, sharper tools with when-NOT-to-use guidance beat a long menu.</li>
+            <li>Swallowing tool errors strands the model; return the error message so it can self-correct.</li>
+            <li>Side-effectful tools (send, delete, pay) need confirmation gates or human approval — design the blast radius, not just the happy path.</li>
+            <li>Sandbox code execution. Always.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- PLANNING -->
+    <article class="pcard" id="p-planning">
+      <button class="pcard-head" aria-expanded="false">
+        <span class="pglyph"><svg viewBox="0 0 24 24"><path d="M4 5h16M4 12h10M4 19h13"/><circle cx="19" cy="12" r="1.6"/><circle cx="20.5" cy="19" r="1.6"/></svg></span>
+        <span class="pt"><b>Planning</b><span>The model writes its own step sequence, then executes it.</span></span>
+        <span class="chev">▶</span>
+      </button>
+      <div class="pcard-body">
+        <div class="ptabs" role="tablist">
+          <button class="active">Use when</button><button>How it works</button><button>Skeleton</button><button>Pitfalls</button>
+        </div>
+        <div class="ppanel active">
+          <ul class="tight">
+            <li>The right sequence of steps <strong>varies per request</strong> and can't be hard-coded — open-ended research, "do whatever's needed" support tickets, ad-hoc analysis.</li>
+            <li>The action space is well-defined (a tool catalog) even though the ordering isn't.</li>
+          </ul>
+          <div class="callout warn" style="margin-top:14px">
+            <span class="co-label">Default the other way</span>
+            <p>If you <em>can</em> write the workflow as a fixed sequence, do — it's cheaper, faster, testable, and debuggable. Planning is the escalation, not the starting point.</p>
+          </div>
+        </div>
+        <div class="ppanel">
+          <p>Ask the model to produce an explicit plan — an ordered list of actions drawn from your catalog, with inputs — then execute steps one by one, feeding results into a shared state. When a step fails or reality diverges, re-plan from current state rather than pushing on.</p>
+          <p>A powerful variant from the course: <strong>planning with code execution</strong> — the model writes the plan <em>as a program</em> that calls your tool functions, and you run it. Loops, conditionals and data handling come free from the language instead of fragile prompt logic.</p>
+        </div>
+        <div class="ppanel">
+          <div class="codeblock">
+            <div class="code-top"><span>plan_execute.py</span><button class="copybtn">Copy</button></div>
+<pre>def plan_and_execute(goal, max_replans=2):
+    plan = llm(
+        f"Goal: {goal}\nAvailable actions: {ACTION_CATALOG}\n"
+        "Write a numbered plan. One action per step, with its inputs."
+    )
+    state = {"goal": goal, "done": []}
+    for step in parse(plan):
+        result = execute(step, state)
+        state["done"].append((step, result))
+        if failed(result) and max_replans:     <span class="c"># reality drifted — re-plan, don't push on</span>
+            max_replans -= 1
+            plan = llm(
+                f"Step failed: {result}\nState so far: {state}\n"
+                "Revise the remaining plan from here."
+            )
+    return state</pre>
+          </div>
+        </div>
+        <div class="ppanel">
+          <ul class="tight">
+            <li>Validate every planned step against the allowed action catalog before executing — models invent actions.</li>
+            <li>Cap iterations and re-plans; runaway loops are the signature failure of autonomous agents.</li>
+            <li>Plans go stale: execute against current state, and re-plan on surprise rather than trusting step 6 written before step 2 ran.</li>
+            <li>Log the plan itself — it's your best debugging artifact when things go sideways.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+    <!-- MULTI-AGENT -->
+    <article class="pcard" id="p-multi">
+      <button class="pcard-head" aria-expanded="false">
+        <span class="pglyph"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="12" cy="17" r="3"/><path d="M9 9.5l2 4.5M15 9.5l-2 4.5M10 7h4"/></svg></span>
+        <span class="pt"><b>Multi-agent</b><span>Specialized roles with their own prompts, tools and context.</span></span>
+        <span class="chev">▶</span>
+      </button>
+      <div class="pcard-body">
+        <div class="ptabs" role="tablist">
+          <button class="active">Use when</button><button>How it works</button><button>Skeleton</button><button>Pitfalls</button>
+        </div>
+        <div class="ppanel active">
+          <ul class="tight">
+            <li>Subtasks need genuinely <strong>different contexts, instructions, or tool sets</strong> — a researcher, an analyst, a writer — and one mega-prompt is getting muddy.</li>
+            <li>Subtasks are independent enough to run in <strong>parallel</strong>.</li>
+            <li>You want a reviewer role that's structurally separate from the producer (reflection, scaled up).</li>
+          </ul>
+        </div>
+        <div class="ppanel">
+          <p>Each "agent" is just an LLM configuration — a role prompt, a tool set, its own slice of context. The engineering is in how they communicate. The course's three core patterns:</p>
+          <ul class="tight">
+            <li><strong>Pipeline</strong> — sequential handoffs, each agent transforms and passes on. Simplest; errors compound forward.</li>
+            <li><strong>Manager–workers</strong> — a coordinator decomposes the task, dispatches workers (in parallel where possible), synthesizes results. The workhorse pattern.</li>
+            <li><strong>Peer collaboration</strong> — agents share a thread and debate or critique each other. Highest quality ceiling, highest cost and least predictable.</li>
+          </ul>
+        </div>
+        <div class="ppanel">
+          <div class="codeblock">
+            <div class="code-top"><span>manager_workers.py</span><button class="copybtn">Copy</button></div>
+<pre>WORKERS = {
+    "researcher": "You gather facts using the search tool. Return sourced notes.",
+    "analyst":    "You turn research notes into three insights, with evidence.",
+    "writer":     "You draft a one-page brief from the insights. Plain language.",
+}
+
+def run_team(task):
+    assignments = llm(
+        f"Task: {task}\nWorkers: {list(WORKERS)}\n"
+        "Assign each worker one subtask. Reply as JSON."
+    )
+    outputs = {}
+    for name, subtask in parse(assignments).items():   <span class="c"># parallelize when independent</span>
+        outputs[name] = llm(WORKERS[name] + "\n\nSubtask: " + subtask,
+                            tools=TOOLS_FOR[name])
+    return llm(
+        f"Task: {task}\nWorker outputs: {outputs}\n"
+        "Synthesize the final answer. Flag any disagreements."
+    )</pre>
+          </div>
+        </div>
+        <div class="ppanel">
+          <ul class="tight">
+            <li>Start with the fewest agents that work — often one. Every handoff adds coordination cost and a new place for errors to compound.</li>
+            <li>Give each agent only the context it needs; forwarding everything to everyone recreates the mega-prompt you were escaping.</li>
+            <li>Eval the handoffs, not just the final output — inter-agent messages are where multi-agent systems quietly fail.</li>
+          </ul>
+        </div>
+      </div>
+    </article>
+
+  </div>
+</section>
+<!-- ============ 04 BUILD LOOP ============ -->
+<section id="loop">
+  <div class="eyebrow">Step 04</div>
+  <h2>The build loop: evals are the product</h2>
+  <p class="lede">The course's sharpest lesson isn't a pattern — it's a process. Teams that ship agentic systems fast aren't better prompters; they're disciplined about this loop.</p>
+
+  <div class="loopsteps">
+    <div class="lstep">
+      <div class="ln" aria-hidden="true"></div>
+      <div>
+        <h3>Build a quick end-to-end skeleton</h3>
+        <p>Resist polishing components in isolation. A rough working pipeline — even one that's wrong half the time — reveals where the <em>real</em> problems are, and they're rarely where you guessed. Days, not weeks.</p>
+      </div>
+    </div>
+    <div class="lstep">
+      <div class="ln" aria-hidden="true"></div>
+      <div>
+        <h3>Read your traces</h3>
+        <p>Log every step's input and output, then actually read them. Most insight in agentic development comes from eyeballing a handful of real traces, not from dashboards. If you can't see intermediate outputs, you can't debug the system — instrument first.</p>
+      </div>
+    </div>
+    <div class="lstep">
+      <div class="ln" aria-hidden="true"></div>
+      <div>
+        <h3>Run error analysis on failures</h3>
+        <p>Take a sample of bad outputs, and for each one mark the <strong>first component where things went wrong</strong>. Tally the counts. The table — not intuition, not the newest technique on your feed — tells you where to invest. (Worked method in the next section.)</p>
+      </div>
+    </div>
+    <div class="lstep">
+      <div class="ln" aria-hidden="true"></div>
+      <div>
+        <h3>Build evals where the errors are</h3>
+        <p>Start with ~20 examples from real inputs; grow the set every time you find a new failure. Two kinds, use both:</p>
+        <ul class="tight">
+          <li><strong>Objective, code-graded</strong> — wherever output is checkable: exact match, contains-the-fact, JSON validates, SQL returns the right rows, tests pass. Cheap, fast, trustworthy.</li>
+          <li><strong>LLM-as-judge with a rubric</strong> — for subjective quality (tone, completeness, reasoning). Give the judge specific criteria, not "rate 1–10", and spot-check its verdicts against your own until you trust it.</li>
+        </ul>
+        <p>Add <strong>component-level evals</strong> for the steps error analysis flagged — testing the retrieval step or the query-writer in isolation localizes regressions instantly.</p>
+        <div class="codeblock">
+          <div class="code-top"><span>evals.py</span><button class="copybtn">Copy</button></div>
+<pre>EVALS = load_jsonl("evals.jsonl")   <span class="c"># ~20 real examples to start; grows with every bug</span>
+
+def run_evals():
+    rows = []
+    for ex in EVALS:
+        out = workflow(ex["input"])
+        if ex["kind"] == "objective":
+            score = check(out, ex["expected"])        <span class="c"># graded by code</span>
+        else:
+            score = judge(out, rubric=ex["rubric"])   <span class="c"># graded by LLM + rubric</span>
+        rows.append({"id": ex["id"], "score": score})
+    report(rows)   <span class="c"># per-example AND aggregate — read the failures, not just the number</span></pre>
+        </div>
+      </div>
+    </div>
+    <div class="lstep">
+      <div class="ln" aria-hidden="true"></div>
+      <div>
+        <h3>Fix the weakest component, re-run, repeat</h3>
+        <p>Work down this menu, cheapest first:</p>
+        <ul class="tight">
+          <li>Sharpen the step's prompt; add 2–3 concrete examples of good output.</li>
+          <li>Split one overloaded step into two smaller ones.</li>
+          <li>Add external feedback or a reflection pass to that step.</li>
+          <li>Add, fix, or better-document a tool.</li>
+          <li>Swap the model <em>for that step</em> (bigger for hard steps, smaller for easy ones).</li>
+          <li>Fine-tune — last resort, after the workflow itself is right.</li>
+        </ul>
+        <p>Your eval set doubles as a regression suite: every change gets re-scored, so you improve with confidence instead of whack-a-mole.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 ERROR ANALYSIS ============ -->
+<section id="errors">
+  <div class="eyebrow">Step 05</div>
+  <h2>Error analysis, the concrete method</h2>
+  <p class="lede">Ten minutes with a spreadsheet beats a week of guessing. Here's the drill for a research agent with four components.</p>
+  <ul class="tight">
+    <li>Collect 15–30 traces where the final output was wrong or weak.</li>
+    <li>For each, read step-by-step and mark the <strong>first</strong> component whose output went bad (blame upstream, not the messenger).</li>
+    <li>Tally per component. Fix the biggest count with the cheapest fix. Re-run evals. Repeat.</li>
+  </ul>
+  <table>
+    <thead><tr><th>Component</th><th>Errors attributed</th><th>Share</th><th>Decision</th></tr></thead>
+    <tbody>
+      <tr class="hot"><td>Query writer</td><td class="num">11 / 20</td><td class="num">55%</td><td><strong>Fix first</strong> — add examples of good queries, then re-measure</td></tr>
+      <tr><td>Web search tool</td><td class="num">2 / 20</td><td class="num">10%</td><td>Leave alone</td></tr>
+      <tr><td>Synthesizer</td><td class="num">6 / 20</td><td class="num">30%</td><td>Next — likely a reflection pass with source-checking</td></tr>
+      <tr><td>Citation checker</td><td class="num">1 / 20</td><td class="num">5%</td><td>Leave alone</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <span class="co-label">Headroom trick</span>
+    <p>Not sure a component is worth fixing? Replace its output with a hand-written perfect version for a few examples and re-run the pipeline. The end-to-end improvement is that component's <strong>headroom</strong> — invest where headroom is large, skip where perfection barely moves the needle.</p>
+  </div>
+  <p>This is also how you should evaluate hype: when a new technique or framework appears, ask which cell of <em>your</em> error table it improves. If the answer is "none", it's not for this project.</p>
+</section>
+
+<!-- ============ 06 OPTIMIZE ============ -->
+<section id="optimize">
+  <div class="eyebrow">Step 06</div>
+  <h2>Latency &amp; cost — optimize last, measure first</h2>
+  <p class="lede">Get quality right before speed: premature optimization hides quality problems and locks in the wrong architecture. When it's time, act on measurements, not vibes.</p>
+  <ul class="tight">
+    <li><strong>Profile per step.</strong> Trace latency and token spend for every component; fix the tallest bar. It's usually one or two steps, not "the model".</li>
+    <li><strong>Parallelize independent steps.</strong> Fan out worker calls, retrievals, and per-section drafts concurrently — often the single biggest latency win.</li>
+    <li><strong>Right-size models per step.</strong> Classification and extraction steps rarely need your best model; route easy steps to fast, cheap ones. Mixed fleets are normal.</li>
+    <li><strong>Cache what repeats.</strong> Retrieval results, tool outputs, stable sub-answers, system-prompt prefixes.</li>
+    <li><strong>Trim context per step.</strong> Each component gets what it needs, not the full conversation — cheaper, faster, and usually more accurate.</li>
+    <li><strong>Stream and stage.</strong> Streaming output and early partial results cut <em>perceived</em> latency even when totals are unchanged; batch anything that can run offline.</li>
+  </ul>
+  <div class="callout warn">
+    <span class="co-label">Budget reality</span>
+    <p>Reflection and multi-agent patterns multiply calls by design. Reserve them for the steps where error analysis proved they earn their cost — not as a default garnish on every step.</p>
+  </div>
+</section>
+
+<!-- ============ 07 PICKER ============ -->
+<section id="picker">
+  <div class="eyebrow">Step 07</div>
+  <h2>Pattern picker</h2>
+  <p class="lede">Answer four questions about your task; get a starting architecture. It encodes the decision rules above — treat it as a first draft, then let evals overrule it.</p>
+  <div class="picker">
+    <div class="pq">
+      <div class="q">1 · Can you write down the step sequence in advance?</div>
+      <div class="opts" role="radiogroup">
+        <label><input type="radio" name="q1" value="fixed" checked>Yes, it's stable</label>
+        <label><input type="radio" name="q1" value="branch">Mostly — a few branches</label>
+        <label><input type="radio" name="q1" value="plan">No, it varies per request</label>
+      </div>
+    </div>
+    <div class="pq">
+      <div class="q">2 · Does the task need external data or real actions (APIs, DBs, search, code)?</div>
+      <div class="opts" role="radiogroup">
+        <label><input type="radio" name="q2" value="yes" checked>Yes</label>
+        <label><input type="radio" name="q2" value="no">No — pure text transform</label>
+      </div>
+    </div>
+    <div class="pq">
+      <div class="q">3 · Is output quality critical, and is the output checkable (runnable, testable, verifiable)?</div>
+      <div class="opts" role="radiogroup">
+        <label><input type="radio" name="q3" value="ext" checked>Critical &amp; checkable</label>
+        <label><input type="radio" name="q3" value="self">Critical, but subjective</label>
+        <label><input type="radio" name="q3" value="no">Speed matters more</label>
+      </div>
+    </div>
+    <div class="pq">
+      <div class="q">4 · Do subtasks need different roles/tools, or run well in parallel?</div>
+      <div class="opts" role="radiogroup">
+        <label><input type="radio" name="q4" value="yes">Yes, clearly distinct</label>
+        <label><input type="radio" name="q4" value="no" checked>No — one context is fine</label>
+      </div>
+    </div>
+    <div class="verdict">
+      <div class="v-label">Recommended starting point</div>
+      <div class="verdict-chips" id="vchips"></div>
+      <p id="vtext"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 08 CHECKLIST ============ -->
+<section id="checklist">
+  <div class="eyebrow">Step 08</div>
+  <h2>Pre-flight checklist</h2>
+  <p class="lede">Run this before you call a workflow "done". Checks reset when you reload — it's a ritual, not a record.</p>
+  <div class="check-head">
+    <span class="progress-pill"><b id="ckdone">0</b> / <span id="cktotal">10</span> complete</span>
+  </div>
+  <div class="checklist" id="cklist">
+    <label><input type="checkbox"><span class="ct"><b>Task decomposed</b> into named steps, each with explicit input → output.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Executor chosen per step</b> — LLM, code, tool, or human — and code used wherever it can be.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Lowest workable autonomy</b> selected; planning only where the sequence truly varies.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>End-to-end skeleton runs</b> on at least 5 real inputs, however roughly.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Every step traced</b> — inputs and outputs logged and readable.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Eval set of 20+ real examples</b> runs with one command; objective checks where possible, rubric-judge where not.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Error-analysis table exists</b> and the current work item is its biggest cell.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Guardrails in place</b> — iteration caps, plan validation, confirmation gates on side-effectful tools, sandboxed code execution.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Component-level evals</b> cover the steps that failed most.</span></label>
+    <label><input type="checkbox"><span class="ct"><b>Latency &amp; cost profiled per step</b>, with budgets agreed before optimizing.</span></label>
+  </div>
+</section>
+
+<footer>
+  <p>Independent study companion to <a href="https://www.deeplearning.ai/courses/agentic-ai" target="_blank" rel="noopener">Agentic AI</a> — a DeepLearning.AI course taught by Andrew Ng (5 modules · ~10h). Concepts follow the course; wording, code skeletons and tools here are original. Not affiliated with DeepLearning.AI.</p>
+</footer>
+</main>
+</div>
+</div>
+
+<script>
+(function(){
+  // pattern cards: expand/collapse
+  document.querySelectorAll('.pcard-head').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var card = btn.closest('.pcard');
+      var open = card.classList.toggle('open');
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if(open){ card.scrollIntoView({behavior:'smooth', block:'nearest'}); }
+    });
+  });
+
+  // tabs inside cards
+  document.querySelectorAll('.pcard').forEach(function(card){
+    var tabs = card.querySelectorAll('.ptabs button');
+    var panels = card.querySelectorAll('.ppanel');
+    tabs.forEach(function(tab, i){
+      tab.addEventListener('click', function(e){
+        e.stopPropagation();
+        tabs.forEach(function(t){ t.classList.remove('active'); });
+        panels.forEach(function(p){ p.classList.remove('active'); });
+        tab.classList.add('active');
+        panels[i].classList.add('active');
+      });
+    });
+  });
+
+  // copy buttons
+  document.querySelectorAll('.copybtn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+      e.stopPropagation();
+      var pre = btn.closest('.codeblock').querySelector('pre');
+      var text = pre.innerText;
+      function done(){ btn.textContent = 'Copied'; setTimeout(function(){ btn.textContent = 'Copy'; }, 1500); }
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(text).then(done, done);
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        try{ document.execCommand('copy'); }catch(err){}
+        document.body.removeChild(ta); done();
+      }
+    });
+  });
+
+  // scrollspy
+  var links = document.querySelectorAll('.rail a, .chipbar a');
+  var sections = document.querySelectorAll('main section');
+  function setActive(id){
+    links.forEach(function(a){
+      a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+    });
+  }
+  if('IntersectionObserver' in window){
+    var obs = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if(en.isIntersecting){ setActive(en.target.id); }
+      });
+    }, {rootMargin:'-20% 0px -70% 0px'});
+    sections.forEach(function(s){ obs.observe(s); });
+  }
+  setActive('core');
+
+  // pattern picker
+  function pickerUpdate(){
+    var v = function(name){
+      var el = document.querySelector('input[name="' + name + '"]:checked');
+      return el ? el.value : '';
+    };
+    var q1 = v('q1'), q2 = v('q2'), q3 = v('q3'), q4 = v('q4');
+    var chips = [], text = '';
+
+    if(q1 === 'fixed'){
+      chips.push(['Fixed workflow · L2', 1]);
+      text = 'Hard-code the step sequence and let the LLM execute individual steps — predictable and easy to eval. ';
+    } else if(q1 === 'branch'){
+      chips.push(['Routed workflow · L3', 1]);
+      text = 'Keep the backbone fixed, but let the model choose between defined branches or tools at decision points. ';
+    } else {
+      chips.push(['Planning · L4', 1]);
+      text = 'Let the model draft an explicit plan over your action catalog, execute step-by-step, and re-plan on failure. Cap iterations. ';
+    }
+
+    chips.push(['Tool use', q2 === 'yes' ? 1 : 0]);
+    if(q2 === 'yes'){ text += 'Expose sharp, well-described tools (consider code execution and MCP for breadth). '; }
+
+    if(q3 === 'ext'){
+      chips.push(['Reflection + external checks', 1]);
+      text += 'Add a generate → run checks → critique → revise loop on the risky steps; objective feedback does the heavy lifting. ';
+    } else if(q3 === 'self'){
+      chips.push(['Reflection (rubric critic)', 1]);
+      text += 'Add a rubric-driven reviewer pass on the output step; verify the critic against your own judgment. ';
+    } else {
+      chips.push(['Reflection', 0]);
+      text += 'Skip reflection for now — measure first-pass quality before paying 2–3× tokens. ';
+    }
+
+    chips.push(['Multi-agent', q4 === 'yes' ? 1 : 0]);
+    if(q4 === 'yes'){ text += 'Split into manager–worker roles with per-role prompts and tools; parallelize independent workers and eval the handoffs.'; }
+    else { text += 'Stay single-agent until a mega-prompt or parallelism forces the split.'; }
+
+    var wrap = document.getElementById('vchips');
+    wrap.innerHTML = '';
+    chips.forEach(function(c){
+      var s = document.createElement('span');
+      s.className = 'vchip' + (c[1] ? '' : ' dim');
+      s.textContent = c[0];
+      wrap.appendChild(s);
+    });
+    document.getElementById('vtext').textContent = text + ' Then run the build loop: skeleton → traces → error analysis → evals → fix.';
+  }
+  document.querySelectorAll('.picker input[type="radio"]').forEach(function(r){
+    r.addEventListener('change', pickerUpdate);
+  });
+  pickerUpdate();
+
+  // checklist progress (in-memory only)
+  var boxes = document.querySelectorAll('#cklist input[type="checkbox"]');
+  document.getElementById('cktotal').textContent = boxes.length;
+  function ckUpdate(){
+    var n = 0;
+    boxes.forEach(function(b){ if(b.checked){ n++; } });
+    document.getElementById('ckdone').textContent = n;
+  }
+  boxes.forEach(function(b){ b.addEventListener('change', ckUpdate); });
+})();
+</script>
+</body>
+</html>
