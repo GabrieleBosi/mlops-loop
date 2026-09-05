@@ -65,7 +65,31 @@ the two configs, the registered model, and the dataset input.
 
 ## The skeleton run
 
-PENDING: filled from the first tracked run on this commit.
+Run `ae4f0cd88d4b4d439bbcadb545bd01b6`, experiment `churn`, commit `605ab74`, `git_dirty=false`.
+Dataset sha256 `16320c9c1ec72448db59aa0a26a0b95401046bef5d02fd3aeb906448e3055e91` over 7,043 rows,
+of which 11 had a blank `TotalCharges` and were set to 0.0 after the tenure-0 check. Feature-code
+hash `215d7d44d683a290ba5e4a3561fd2f5aa75b4b960203a84643ad6542a4205b49`, 45 encoded columns.
+One LogisticRegression, `C=1.0`, `solver=lbfgs`, `max_iter=1000`, registered as `churn` version 1
+with the `champion` alias.
+
+| split | rows | churn rate | ROC-AUC | PR-AUC | recall at precision 0.5 | Brier |
+|-------|-----:|-----------:|--------:|-------:|------------------------:|------:|
+| train | 2,680 | 0.1466 | fitted on | | | |
+| val | 671 | 0.1475 | 0.8448 | 0.5072 | 0.5657 | 0.0949 |
+| holdout | 1,057 | 0.2649 | 0.8186 | 0.5971 | 0.7536 | 0.1493 |
+| future | 2,635 | 0.4163 | 0.7721 | 0.6618 | 0.9572 | 0.2067 |
+
+Read the val and holdout columns together. Val comes from the same reference pool the model was fit
+on, so its churn rate is 0.1475 and its Brier is low because most predictions are confidently near
+zero. The holdout is drawn from the whole population, churns at 0.2649, and is the number to quote.
+
+The future batch is the reason the rest of this repo exists. The model has never seen a fibre-optic
+customer, and on that batch its Brier score is 0.2067 against 0.1493 on the holdout: the ranking
+still works, ROC-AUC 0.7721, but the probabilities are badly calibrated. Session 3 has to catch that
+without being told the answer.
+
+To reproduce these numbers: `python -m mlops_loop skeleton` at commit `605ab74`, then
+`python -m mlops_loop ui` and open the run. The split is seeded, so the rows land the same way.
 
 ## Serving
 

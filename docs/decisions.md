@@ -46,8 +46,8 @@ enforced rather than assumed.
 ## 2026-09-05 Future batch for Session 3: InternetService == "Fiber optic"
 Chosen over injected noise and over the top tenure quartile. The shift is real and explainable:
 fibre customers churn at 41.6 % against 14.7 % for the reference set, and the champion never sees
-one during training. Measured on the skeleton run, the reference champion scores holdout Brier
-0.1493 and future-batch Brier 0.2067, which is the degradation Session 3's PSI monitor and
+one during training. Measured on run `ae4f0cd88d4b4d439bbcadb545bd01b6`, the reference champion scores holdout
+Brier 0.1493 and future-batch Brier 0.2067, which is the degradation Session 3's PSI monitor and
 challenger comparison are meant to catch. Fallback if this turns out too easy: top tenure quartile
 (tenure > 55, 1,755 rows, 7.8 % churn).
 
