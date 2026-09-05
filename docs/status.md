@@ -186,3 +186,109 @@ red, so the signal points at the gate rather than at the code:
 ```
 
 Locally the same change gave exit code 1 and gate run `dfc075fbaae349439cfd5c2b8511769d`.
+
+## 2026-09-05, end of Session 3
+
+### Exists
+All eleven steps of the decomposition table. `drift`, `reports` and `reproduce` are built, so no
+command in `CLAUDE.md` prints "not built" any more.
+
+Everything below came from one `python -m mlops_loop reproduce` at commit `0b1cd3a`, 26 logged
+runs, 63.5 seconds total on a Windows laptop:
+
+| stage | seconds | result |
+|-------|--------:|--------|
+| skeleton | 22.0 | run `74e4cde1680b4a78ad06d270e7c53fd6`, version 1 |
+| train | 19.7 | parent `a15a64efaaf94f8dbbe980cec4ea13f3`, 14 configs, version 2 |
+| eval | 2.3 | run `07797376000849eab75e3137d91fe62e`, 4 of 4 passed |
+| drift | 14.8 | 2 batches, 2 decisions, 1 promotion |
+| reports | 2.6 | run `ac4850f895b5402e898cc31e97588504` |
+| eval (final champion) | 2.1 | run `ea66c83c2d454c329c46145c48340c4a`, version 3, passed |
+
+Registry: `churn` versions 1, 2 and 3. Version 3 (`challenger-fibre-monthly`) holds `champion`,
+version 2 (`lr-c0.05-balanced`) holds `previous`.
+
+### Drift
+`configs/drift.yaml` defines two future batches as feature slices, a PSI threshold for each of the
+19 model features, a tighter one for the prediction distribution, and the promotion margin. Both
+batches partition the fibre pool Session 1 reserved, so train, val and holdout did not move.
+
+| batch | rows | churn | monitor run | breaches | prediction PSI |
+|-------|-----:|------:|-------------|---------:|---------------:|
+| `fibre-monthly` | 1,451 | 0.5410 | `c934991a348d4126a48cf7301d99296d` | 16 of 20 | 4.3735 |
+| `fibre-committed` | 663 | 0.1207 | `cfa00a696f894394b432a60020c9288b` | 16 of 20 | 0.9595 |
+
+Loudest on both: `InternetService` 26.97, `MonthlyCharges` 10.67 and 11.36, `Contract` 7.46 and
+6.04. Same input drift, opposite label drift, which is why a PSI breach only earns the right to
+train a challenger.
+
+### The two promotion decisions
+Rule, fixed in `configs/drift.yaml` before either batch ran: promote only if PR-AUC on the fixed
+holdout improves by more than 0.01, both models scored in the same run on the same 1,057 rows.
+
+`fibre-monthly`, decision run `853f20f3e0d64adab9ea9158ca970bb6`, **promoted**. Challenger
+`5873c3dcee694a6a9b32316f882662b9`, the champion's own config on 4,125 rows. PR-AUC 0.5944 to
+0.6515 (+0.0571), ROC-AUC +0.0244, recall at precision 0.5 +0.0857, Brier 0.1962 to 0.1643.
+Registered as version 3; version 2 took `previous`.
+
+`fibre-committed`, decision run `7d1ee8ce585d4e05ac66fc3bfcd387b1`, **rejected**. Challenger
+`1039e97ee6fa43a087271e30d4cfa583` on 3,337 rows. PR-AUC 0.6515 to 0.6500 (−0.0015), so under the
+margin, even though ROC-AUC improved +0.0076 and recall +0.0250. Brier got much worse, 0.1643 to
+0.2272. Neither outcome was engineered.
+
+### Gate
+Final gate `ea66c83c2d454c329c46145c48340c4a` on version 3, 4 of 4 passed, and with far more room
+than Session 2's champion had: ROC-AUC 0.8258 (+0.0559), PR-AUC 0.6515 (+0.1351), recall at
+precision 0.5 0.7750 (+0.1786), Brier 0.1643 (+0.0338 against +0.0019 for version 2). Retraining
+on the drifted batch improved calibration as a side effect.
+
+### Error analysis
+`reports/error_analysis.md`, run `ac4850f895b5402e898cc31e97588504`, champion version 3. 254 of
+1,057 holdout rows wrong at threshold 0.5 (24.0 %): 72 false negatives, 182 false positives.
+Attribution is code, in `mlops_loop/analysis.py`.
+
+| component | sampled (20) | all (254) |
+|-----------|-------------:|----------:|
+| split | 0 | 1 |
+| features | 2 | 40 |
+| **model** | **17** | **188** |
+| threshold | 1 | 25 |
+
+Biggest cell `model`. 140 of those 188 are false positives at a median predicted probability of
+0.739, and the champion flags 36.9 % of the holdout against an actual 26.5 %. Named cheapest fix:
+add Brier as a constraint to the sweep's selection rule and re-run `train`, two lines of config
+and 26 seconds. Not applied, by design.
+
+### Reproduce from a clean clone
+`git clone` into an empty directory, `py -3.12 -m venv`, `pip install -r requirements.txt`: **101
+seconds**. Then `python -m mlops_loop reproduce`: **84 seconds** wall clock, exit 0. Total **3
+minutes 5 seconds**, against the brief's budget of 10. Every metric came back identical to four
+decimal places: gate 0.8258 / 0.6515 / 0.7750 / 0.1643, tally 0/2/17/1 sampled and 1/40/188/25
+overall, `fibre-monthly` +0.0571 promoted and `fibre-committed` −0.0015 rejected. Only the run ids
+differ, because they are new runs.
+
+One note for anyone repeating this on Windows: the clone has to sit in a short path. mlflow ships
+migration files nested deeply enough that a long temporary directory hits the 260-character limit
+and `pip install` fails partway through.
+
+### Tests and CI
+109 tests, about 2 minutes 11 seconds locally. PSI is checked against two hand-computed values on
+both the categorical and the numeric path. `tests/test_retrain.py` asserts the fixed holdout is
+never trained on, that every decision run carries both run ids and the margin, and that the
+verdict follows the rule rather than a stored answer.
+
+CI now runs `python -m mlops_loop reproduce` in place of `train` then `eval`, so every push
+rebuilds the registry from nothing and gates the champion it just built.
+
+### Does not exist
+- Promotion on merit inside the sweep. `train` still gives `champion` to the sweep winner with no
+  head-to-head test against the incumbent. `drift` does the comparison properly, and
+  `promotion.json` records both sides, so the rule needs moving rather than writing.
+- Calibration in the selection rule, which the error analysis argues for and Session 2 flagged
+  independently when version 2 cleared the Brier line by 0.0019.
+- A component-level test that fails when calibration degrades. `docs/preflight.md` item 9 is
+  unticked for this reason.
+- Track B, the GenAI evaluation suite in order-processing-workflow. Session 4.
+
+`docs/preflight.md` is filled in: seven of ten items ticked with evidence links, three left
+unticked with a line each on why.
