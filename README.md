@@ -14,8 +14,10 @@ expects, and that the whole loop rebuilds from a clean clone in under two minute
 Every step is deterministic Python. No LLM, no agent framework. The decomposition table in
 [docs/brief.md](docs/brief.md) assigns an executor to each of the eleven steps and the answer is
 "code" in every row, because code is free, exact and testable. A second track applies the same
-tracking discipline to a GenAI evaluation suite; it lives in the order-processing-workflow repo
-and will be linked here in Session 4.
+tracking discipline to a GenAI evaluation suite: 39 cases including safety and multilingual
+ones, per-category thresholds gated in CI, MLflow-traced, with a judge calibrated against
+labels and the disagreements published. It lives in
+[order-processing-workflow](https://github.com/GabrieleBosi/order-processing-workflow#evaluation).
 
 ## The pipeline
 
@@ -263,9 +265,9 @@ with `champion` and `previous` aliases, the tracked sweep, drift monitoring on t
 retrain trigger with champion-versus-challenger promotion, the eval gate, 109 tests, and CI that
 rebuilds the registry from nothing and runs the whole loop on every push and weekly.
 
-Not built: promotion on merit inside the sweep, calibration in the selection rule, a
-component-level calibration test, and Track B, the GenAI evaluation suite in
-order-processing-workflow. The first three are argued for above; the last is Session 4.
+Not built: promotion on merit inside the sweep, calibration in the selection rule, and a
+component-level calibration test. All three are argued for above. Track B, the GenAI
+evaluation suite, is built and linked at the top of this file.
 
 ## Licence
 
