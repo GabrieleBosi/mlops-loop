@@ -15,5 +15,8 @@ packages = ["mlops_loop"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Bare `pytest` does not put the repo root on sys.path the way `python -m pytest` does.
+# Without this the suite passes locally and fails in CI, which is how it was found.
+pythonpath = ["."]
 addopts = "-q"
 filterwarnings = ["ignore::DeprecationWarning"]
