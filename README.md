@@ -19,6 +19,41 @@ ones, per-category thresholds gated in CI, MLflow-traced, with a judge calibrate
 labels and the disagreements published. It lives in
 [order-processing-workflow](https://github.com/GabrieleBosi/order-processing-workflow#evaluation).
 
+## The loop
+
+```mermaid
+flowchart TB
+    subgraph build["build, steps 1 to 6"]
+        direction LR
+        I["1 ingest<br/>CSV URL, sha256 of the bytes"] --> V["2 validate<br/>schema, or stop and say why"]
+        V --> S["3 split<br/>holdout, val, future batches, train"]
+        S --> F["4 features<br/>feature-code hash, pinned categories"]
+        F --> T["5 train<br/>14 configs, one run each"]
+        T --> E["6 evaluate<br/>val PR-AUC selects the winner"]
+    end
+
+    E --> R[("7 registry<br/>models:/churn@champion")]
+    R --> SRV["8 serve<br/>FastAPI, loads the alias at startup"]
+    R --> G{"11 gate<br/>holdout vs configs/thresholds.yaml"}
+    G -->|"all four pass"| PASS["exit 0"]
+    G -->|"any fail"| FAIL["exit 1, CI red"]
+
+    R --> M["9 monitor<br/>PSI per feature on a future batch"]
+    M -->|"PSI under threshold"| NONE["no action"]
+    M -->|"PSI over threshold"| RT["10 retrain<br/>challenger on train plus the batch"]
+    RT --> C{"holdout PR-AUC<br/>over champion by 0.01?"}
+    C -->|"yes"| P["promote: new version takes champion,<br/>the old one takes previous"]
+    C -->|"no"| RJ["reject: the champion keeps the alias"]
+    P --> R
+    RJ --> R
+```
+
+The registry is the hinge. Everything upstream of it writes a version, everything downstream
+reads the `champion` alias, and the only two ways a new version gets that alias are the sweep
+and a drift decision. Every box writes an MLflow run with its params, metrics, dataset digest,
+feature-code hash and git commit. `skeleton` walks 1 to 8 once with one model, `train` runs 5 to
+7 over the sweep, `drift` runs 9 and 10 per batch, `eval` runs 11.
+
 ## The pipeline
 
 | # | Step | Input to output | Where |
